@@ -15,8 +15,8 @@ FSM Motor = FSM(STOP);
 
 const int trigPinLeft = 7;
 const int echoPinLeft = 8;
-const int trigPinLeft = 9;
-const int echoPinLeft = 10;
+const int trigPinRight = 9;
+const int echoPinRight = 10;
 
 bool inState;
 
@@ -149,7 +149,7 @@ void base_search(){
     //FORWARD
   }
 
-  x = // HEIGHT OF COURSE - (ULTRASONIC SENSOR + OFFSET)
+  // x = HEIGHT OF COURSE - (ULTRASONIC SENSOR + OFFSET)
   
   //RESET IMU 
 
@@ -218,7 +218,7 @@ void base_search(){
   }
 
 
-  x = //x - 10
+  //x = x - 10
 
   maxAngleLeft = arctan(x/y1);
   maxAngleRight = arctan(x/y2);
