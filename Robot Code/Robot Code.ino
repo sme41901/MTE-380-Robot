@@ -10,22 +10,51 @@ State WALL_DISENGAGE = State(wall_disengage);
 State BASE_SEARCH = State(base_search);
 State BASE_FOUND = State(base_found);
 
-//initiate state machines
+//initiate state machine
 FSM Motor = FSM(STOP);
 
+//Define Ultrasonic Pins
 const int trigPinLeft = 7;
 const int echoPinLeft = 8;
 const int trigPinLeft = 9;
 const int echoPinLeft = 10;
 
+//Define Ultrasonic Pins
+const int inALeft = 1;
+const int inBLeft = 2;
+const int pwmLeft = 3;
+const int inARight = 4;
+const int inBRight = 5;
+const int pwmRight = 6;
+
+
 bool inState;
 
 void setup() {
   inState = false;
+
+//Initialize Left & Right Ultrasonic Sensors
   pinMode(trigPinLeft, OUTPUT); 
   pinMode(echoPinLeft, INPUT); 
   pinMode(trigPinRight, OUTPUT); 
   pinMode(echoPinRight, INPUT);
+
+//Initialize Left Motor
+  pinMode(inALeft, OUTPUT);
+  pinMode(inBLeft, OUTPUT);
+  pinMode(pwmLeft, OUTPUT);
+
+//Initialize Right Motor
+  pinMode(inARight, OUTPUT);
+  pinMode(inBRight, OUTPUT);
+  pinMode(pwmRight, OUTPUT);
+
+// keep motors off initially
+  digitalWrite(inALeft, LOW);
+  digitalWrite(inBLeft, LOW);
+  digitalWrite(inARight, LOW);
+  digitalWrite(inBRight, LOW);
+}
 }
 
 void loop(){
@@ -80,8 +109,12 @@ double read_distance(int trigPin, int echoPin){
 
 void wall_engage(){
   while((read_distance(trigPinLeft, echoPinLeft) + read_distance(trigPinRight, echoPinRight)) / 2 > 5){
-    //MOTOR LEFT FULL SPEED
-    //MOTOR RIGHT FULL SPEED
+    analogWrite(pwmLeft, 100);
+    analogWrite(pwmRight, 100);
+    digitalWrite(inALeft, HIGH);
+    digitalWrite(inBLeft, LOW);
+    digitalWrite(inARight, HIGH);
+    digitalWrite(inBRight, LOW);
     straighten();
   }
 
@@ -117,9 +150,13 @@ void straighten(){
 */
 
 void wall_up(){ 
-  while(/*ULTRASONIC SENSOR < 100 */){
-    //MOTOR LEFT FULL SPEED
-    //MOTOR RIGHT FULL SPEED
+  while((read_distance(trigPinLeft, echoPinLeft) + read_distance(trigPinRight, echoPinRight)) / 2 < 100){
+    analogWrite(pwmLeft, 100);
+    analogWrite(pwmRight, 100);
+    digitalWrite(inALeft, HIGH);
+    digitalWrite(inBLeft, LOW);
+    digitalWrite(inARight, HIGH);
+    digitalWrite(inBRight, LOW);
     straighten();
   }
 
@@ -128,9 +165,13 @@ void wall_up(){
 
 
 void wall_down(){
-  while(/*ULTRASONIC SENSOR > 5*/){
-    //MOTOR LEFT HALF SPEED
-    //MOTOR RIGHT HALF SPEED
+  while((read_distance(trigPinLeft, echoPinLeft) + read_distance(trigPinRight, echoPinRight)) / 2 > 5){
+    analogWrite(pwmLeft, 50);
+    analogWrite(pwmRight, 50);
+    digitalWrite(inALeft, HIGH);
+    digitalWrite(inBLeft, LOW);
+    digitalWrite(inARight, HIGH);
+    digitalWrite(inBRight, LOW);
 
     if(/*velocity > 2 && acceleration > 0*/){
     //MOTOR LEFT REDUCE TORQUE
