@@ -3,13 +3,13 @@ int inA = 2;
 int inB = 3;
 
 // pwm connection
-int Pwm = 5;
+int pwmPin = 5;
 
 void setup() {
   // put your setup code here, to run once:
   pinMode(inA, OUTPUT);
   pinMode(inB, OUTPUT);
-  pinMode(Pwm, OUTPUT);
+  pinMode(pwmPin, OUTPUT);
 
   // keep motors off initially
   digitalWrite(inA, LOW);
@@ -19,14 +19,23 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   directionControl();
-  delay(1000);
 }
 
 void directionControl() {
   // set motor speed via pwm
-  analogWrite(Pwm, 100);
-
+  analogWrite(pwmPin, 255);
   // turn on motor and turn forward
   digitalWrite(inA, HIGH);
   digitalWrite(inB, LOW);
+
+  delay(5000);
+  digitalWrite(inA, LOW);
+  digitalWrite(inB, LOW);
+  delay(5000);
+  digitalWrite(inA, LOW);
+  digitalWrite(inB, HIGH);
+   delay(5000);
+   digitalWrite(inA, LOW);
+  digitalWrite(inB, LOW);
+  delay(5000);
 }
