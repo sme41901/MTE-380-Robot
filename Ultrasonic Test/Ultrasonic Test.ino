@@ -33,8 +33,8 @@ void loop() {
   distance = (duration * 0.034 / 2);
   // Prints the distance on the Serial Monitor
   // Serial.print("Distance: ");
-  Serial.println(distance);
-  totalDistance += distance;
+  Serial.println(1*distance);
+  totalDistance += (1*distance);
   if(count == 10){
     Serial.print("Average: ");
     Serial.println(totalDistance / 10);

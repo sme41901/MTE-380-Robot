@@ -62,7 +62,7 @@ void setup() {
 
 void loop(){
 
-  if(inState == false){//inState only used if loop() can run again before function inside finishes executing
+  if(inState == false){
 
     inState = true;  
 
@@ -112,16 +112,18 @@ double read_distance(int trigPin, int echoPin){
 }
 
 double average_distance(){
-  return ( read_distance(trigPinLeft, echoPinLeft) + read_distance(trigPinRight, echoPinRight) ) / 2;
+  return 1.0247 * ( read_distance(trigPinLeft, echoPinLeft) + read_distance(trigPinRight, echoPinRight) ) / 2;
 }
 
 void move_forward(){
     analogWrite(pwmLeft, 100);
     analogWrite(pwmRight, 100);
+    //counter clockwise?
     digitalWrite(inALeft, HIGH);
     digitalWrite(inBLeft, LOW);
-    digitalWrite(inARight, HIGH);
-    digitalWrite(inBRight, LOW);
+    //clockwise?
+    digitalWrite(inARight, LOW);
+    digitalWrite(inBRight, HIGH);
 }
 
 void rotate_clockwise(){
@@ -129,8 +131,8 @@ void rotate_clockwise(){
     analogWrite(pwmRight, 50);
     digitalWrite(inALeft, HIGH);
     digitalWrite(inBLeft, LOW);
-    digitalWrite(inARight, LOW);
-    digitalWrite(inBRight, HIGH);
+    digitalWrite(inARight, HIGH);
+    digitalWrite(inBRight, LOW);
 }
 
 
@@ -139,21 +141,75 @@ void rotate_counterclockwise(){
     analogWrite(pwmRight, 50);
     digitalWrite(inALeft, LOW);
     digitalWrite(inBLeft, HIGH);
-    digitalWrite(inARight, HIGH);
-    digitalWrite(inBRight, LOW);
+    digitalWrite(inARight, LOW);
+    digitalWrite(inBRight, HIGH);
 }
 
+void motor_stop(){
+    analogWrite(pwmLeft, 0);
+    analogWrite(pwmRight, 0);
+    digitalWrite(inALeft, LOW);
+    digitalWrite(inBLeft, LOW);
+    digitalWrite(inARight, LOW);
+    digitalWrite(inBRight, LOW);
+
+}
+
+void straighten(){
+  if(read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) > (1 + /*RELATIVE ERROR */) || read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) < (1 - /*RELATIVE ERROR */)){
+      while(read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) > (1 + /*RELATIVE ERROR */) || read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) < (1 - /*RELATIVE ERROR */)){
+        if (read_distance(trigPinLeft, echoPinLeft) < read_distance(trigPinRight, echoPinRight)){
+          // decrease power in RM
+          int multiplier = read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight);
+          analogWrite(pwmLeft, 100);
+          analogWrite(pwmRight, (multiplier*100));
+        }
+        else {
+          // decrease power in LM
+          int multiplier = read_distance(trigPinRight, echoPinRight) / read_distance(trigPinLeft, echoPinLeft);
+          analogWrite(pwmLeft, (multiplier*100));
+          analogWrite(pwmRight, 100);
+        }
+
+      }
+  }
+
+
+  //whats the multiplier to fix for Absolute error? If same as relative error then can use above block ^^^^ if not then use below to create new logic
+  
+  if(abs(read_distance(trigPinLeft, echoPinLeft) - read_distance(trigPinRight, echoPinRight)) > /*ABSOLUTE ERROR*/){
+    if (read_distance(trigPinLeft, echoPinLeft) < read_distance(trigPinRight, echoPinRight)){
+      // decrease power in RM
+      int multiplier = read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight);
+      analogWrite(pwmLeft, 100);
+      analogWrite(pwmRight, (multiplier*100));
+    }
+    else {
+      // decrease power in LM
+      int multiplier = read_distance(trigPinRight, echoPinRight) / read_distance(trigPinLeft, echoPinLeft);
+      analogWrite(pwmLeft, (multiplier*100));
+      analogWrite(pwmRight, 100);
+    }
+    
+  }
+
+  move_forward();
+
+
+}
+
+
 void wall_approach(){
-   while(average_distance() < 10){
     move_forward();
+   while(average_distance() < 10){
    }
 
    inState = false;
 }
 
 void wall_engage(){
+  move_forward();
   while(average_distance()  > 5){
-    move_forward();
     straighten();
   }
 
@@ -161,30 +217,9 @@ void wall_engage(){
 }
 
 
-void straighten(){
-  if(read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) > (1 + /*RELATIVE ERROR */) || read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) < (1 - /*RELATIVE ERROR */))
-      while(read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) > (1 + /*RELATIVE ERROR */) || read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) < (1 - /*RELATIVE ERROR */)){
-        if (read_distance(trigPinLeft, echoPinLeft) < read_distance(trigPinRight, echoPinRight)){
-          // decrease power in RM
-          // (read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight)) * RM
-        }
-        else{
-          // decrease power in LM
-          // (read_distance(trigPinRight, echoPinRight) / read_distance(trigPinLeft, echoPinLeft) ) * LM
-        }
-
-      }
-  }
-  
-  if(/*abs(left sensor - right sensor) > 2*/){
-    //reduce power in one motor
-   }
-}
-
-
 void wall_up(){ 
+  move_forward();
   while(average_distance() < 100){
-    move_forward();
     straighten();
   }
 
@@ -209,69 +244,57 @@ void wall_down(){
 
 void base_search(){
 
-  while(average_distance() < 10){
+  const twoThirdsRamp = 696969;
+
+  while(average_distance() < twoThirdsRamp){
     move_forward();
   }
 
-  x = /* HEIGHT OF COURSE */ - /* ultrasonic distance */ + /*OFFSET*/
+  x = /* HEIGHT OF COURSE */ - average_distance() - /*  OFFSET */
   
-  
-  //RESET IMU 
 
   while(/* angle < 90 */){
     rotate_clockwise();
   }
 
   
-  yLeft = average_distance() + /*OFFSET*/
-  yRight = /*WIDTH OF COURSE*/ - /*ultrasonic distance*/ + /* 2*OFFSET */
-  maxAngleLeft = arctan(x/y1);
-  maxAngleRight = arctan(x/y2);
+  yLeft = average_distance() - /*OFFSET*/
+  yRight = /*WIDTH OF COURSE*/ - average_distance() + /* OFFSET */
+  maxAngleLeft = arctan(x/yLeft);
+  maxAngleRight = arctan(x/yRight);
 
   //RESET IMU
 
-  while(/* angle < (EFFECTUAL ANGLE / 2) */){
-    rotate_clockwise();
-  }
-
   //REGION 1
 
-  while(/* (angle < (180 - (EFFECTUAL ANGLE / 2))) && (angle < maxAngleLeft)  */){
-    rotate_clockwise();
-    if(/*ultrasonic distance < (yLeft/cos(angle))*/){
+  rotate_clockwise();
+
+  while(/* (angle < maxAngleLeft)  */){
+    if(average_distance() /* < yLeft */){
+      motor_stop();
       break;
     }
   }
 
   //REGION 2
 
-  while(/* (angle < (180 - (EFFECTUAL ANGLE / 2))) && (angle < 90)  */){
-    rotate_clockwise();
-    if(/*ultrasonic distance < (x/cos(90-angle))*/){
+  while(/* (angle < (180-maxAngleRight) */){
+    if(average_distance() /* < x */){
+      motor_stop();
       break;
     }
   }
 
   //REGION 3
 
-  while(/* (angle < (180 - (EFFECTUAL ANGLE / 2))) && (angle < (180 - maxAngleRight))  */){
+  while(/* angle < 180  */){
     rotate_clockwise();
-    if(/*ultrasonic distance < (x/cos(angle-90))*/){
+    if(average_distance()/* < yRight */){
+      motor_stop();
       break;
     }
   }
 
-  //REGION 4
-
-  while(/* (angle < (180 - (EFFECTUAL ANGLE / 2))))  */){
-    rotate_clockwise();
-    if(/*ultrasonic distance < (yRight/cos(180-angle))*/){
-      break;
-    }
-  }
-
-  
-  
   
   for(int i = 0; i < 3; i++){
 
@@ -281,13 +304,13 @@ void base_search(){
     rotate_counterclockwise();
   }
 
-  //MOVE 10CM UP
+  //MOVE 2/3 LENGTH OF RAMP UP
 
-  while(/* ULTRASONIC SENSOR != 20 */){
+  while(average_distance() != (twoThirdsRamp * (i+2)){ 
     move_forward();
   }
 
-  x -= 10;
+  x -= twoThirdsRamp; // or x = /* HEIGHT OF COURSE */ - average_distance() - /*  OFFSET */
 
   maxAngleLeft = arctan(x/y1);
   maxAngleRight = arctan(x/y2);
@@ -296,34 +319,35 @@ void base_search(){
     rotate_counterclockwise();
   }
 
-  while(/* angle < maxAngleLeft  */){
-    rotate_clockwise();
-    if(/*ultrasonic distance < (yLeft/cos(angle))*/){
+  //REGION 1
+
+  rotate_clockwise();
+
+  while(/* (angle < maxAngleLeft)  */){
+    if(average_distance() /* < yLeft */){
+      motor_stop();
       break;
     }
   }
 
-  while(/* (angle < 90)  */){
-    rotate_clockwise();
-    if(/*ultrasonic distance < (x/cos(90-angle))*/){
+  //REGION 2
+
+  while(/* (angle < (180-maxAngleRight) */){
+    if(average_distance() /* < x */){
+      motor_stop();
       break;
     }
   }
 
-  while(/* ( angle < (180 - maxAngleRight)  */){
+  //REGION 3
+
+  while(/* angle < 180  */){
     rotate_clockwise();
-    if(/*ultrasonic distance < (x/cos(angle-90))*/){
+    if(average_distance()/* < yRight */){
+      motor_stop();
       break;
     }
   }
-
-  while(/* (angle < 180)  */){
-    rotate_clockwise();
-    if(/*ultrasonic distance < (yRight/cos(180-angle))*/){
-      break;
-    }
-  }
-
 
   }
 
@@ -332,14 +356,14 @@ void base_search(){
 }
 
 void base_found(){
-  while(/* ULTRASONIC SENSOR > 5*/){
-    move_forward();   
+  move_forward();
+  while(average_distance() > 5){
   }
 
-  //MOTOR LEFT STOP 
-  //MOTOR RIGHT STOP
-  
+  motor_stop();
 }
+
+
 
 
 
