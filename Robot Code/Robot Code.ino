@@ -1,4 +1,7 @@
 #include <FiniteStateMachine.h>
+#include "Wire.h"
+#include <MPU6050_light.h>
+MPU6050 mpu(Wire);
 
 //define states and working functions
 //motor states
@@ -33,6 +36,17 @@ bool inState;
 
 void setup() {
   inState = false;
+
+  Serial.begin(9600);
+  Wire.begin();
+  byte status = mpu.begin();
+  Serial.print(F("MPU6050 status: "));
+  Serial.println(status);
+  while (status != 0) { } // stop everything if could not connect to MPU6050
+  Serial.println(F("Calculating offsets, do not move MPU6050"));
+  delay(1000);
+  mpu.calcOffsets(); // gyro and accelero
+  Serial.println("Done!\n");
 
 //Initialize Left Ultrasonic Sensor
   pinMode(trigPinLeft, OUTPUT); 
@@ -198,6 +212,41 @@ void straighten(){
 
 }
 
+void scanning(){
+
+  rotate_clockwise();
+
+  //REGION 1
+
+  while(/* (angle < maxAngleLeft)  */){
+    if(average_distance() /* < yLeft */){
+      motor_stop();
+      break;
+    }
+  }
+
+  //REGION 2
+
+  while(/* (angle < (180-maxAngleRight) */){
+    if(average_distance() /* < x */){
+      motor_stop();
+      break;
+    }
+  }
+
+  //REGION 3
+
+  while(/* angle < 180  */){
+    rotate_clockwise();
+    if(average_distance()/* < yRight */){
+      motor_stop();
+      break;
+    }
+  }
+
+  motor_stop();
+}
+
 
 void wall_approach(){
     move_forward();
@@ -228,15 +277,13 @@ void wall_up(){
 
 
 void wall_down(){
+  move_forward(); // 50% speed
   while(average_distance() > 5){
-    move_forward(); // 50% speed
 
     if(/*velocity > 2 && acceleration > 0*/){
     //MOTOR LEFT REDUCE TORQUE
     //MOTOR RIGHT REDUCE TORQUE
     }
-
-    //can't check straighten() because ceiling is not flat, unreliable, but if we are to fix it we would need to reverse direction of one of the motors (negative) in the straighten() function
   }
 
   inState = false;
@@ -246,9 +293,12 @@ void base_search(){
 
   const twoThirdsRamp = 696969;
 
+  move_forward();
+
   while(average_distance() < twoThirdsRamp){
-    move_forward();
   }
+
+  motor_stop();
 
   x = /* HEIGHT OF COURSE */ - average_distance() - /*  OFFSET */
   
@@ -256,6 +306,8 @@ void base_search(){
   while(/* angle < 90 */){
     rotate_clockwise();
   }
+
+  motor_stop();
 
   
   yLeft = average_distance() - /*OFFSET*/
@@ -265,91 +317,42 @@ void base_search(){
 
   //RESET IMU
 
-  //REGION 1
-
-  rotate_clockwise();
-
-  while(/* (angle < maxAngleLeft)  */){
-    if(average_distance() /* < yLeft */){
-      motor_stop();
-      break;
-    }
-  }
-
-  //REGION 2
-
-  while(/* (angle < (180-maxAngleRight) */){
-    if(average_distance() /* < x */){
-      motor_stop();
-      break;
-    }
-  }
-
-  //REGION 3
-
-  while(/* angle < 180  */){
-    rotate_clockwise();
-    if(average_distance()/* < yRight */){
-      motor_stop();
-      break;
-    }
-  }
+  scanning();
 
   
   for(int i = 0; i < 3; i++){
 
   //FACE FORWARD
 
+  rotate_counterclockwise();
   while(/*angle != 90*/){
-    rotate_counterclockwise();
   }
+
+  motor_stop();
 
   //MOVE 2/3 LENGTH OF RAMP UP
 
+  move_forward(); 
   while(average_distance() != (twoThirdsRamp * (i+2)){ 
-    move_forward();
   }
+
+  motor_stop();
 
   x -= twoThirdsRamp; // or x = /* HEIGHT OF COURSE */ - average_distance() - /*  OFFSET */
 
   maxAngleLeft = arctan(x/y1);
   maxAngleRight = arctan(x/y2);
 
+  rotate_counterclockwise();
   while(/*angle != 0 */){
-    rotate_counterclockwise();
   }
 
-  //REGION 1
+  motor_stop();
 
-  rotate_clockwise();
-
-  while(/* (angle < maxAngleLeft)  */){
-    if(average_distance() /* < yLeft */){
-      motor_stop();
-      break;
-    }
-  }
-
-  //REGION 2
-
-  while(/* (angle < (180-maxAngleRight) */){
-    if(average_distance() /* < x */){
-      motor_stop();
-      break;
-    }
-  }
-
-  //REGION 3
-
-  while(/* angle < 180  */){
-    rotate_clockwise();
-    if(average_distance()/* < yRight */){
-      motor_stop();
-      break;
-    }
-  }
+  scanning();
 
   }
+  
 
   inState = false;
 
