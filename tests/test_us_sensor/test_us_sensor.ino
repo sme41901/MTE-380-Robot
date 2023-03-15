@@ -38,29 +38,49 @@
 //   lcd.clear(); // Clears the LCD screen
 // }
 
-const int trigPin = 11;
-const int echoPin = 10;
+const int trigPinLeft = 6;
+const int echoPinLeft = 5;
+const int trigPinRight = 9;
+const int echoPinRight = 10;
 // defines variables
-long duration;
-int distance;
+long durationLeft;
+int distanceLeft;
+long durationRight;
+int distanceRight;
 void setup() {
-  pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
-  pinMode(echoPin, INPUT); // Sets the echoPin as an Input
+  pinMode(trigPinLeft, OUTPUT); // Sets the trigPin as an Output
+  pinMode(echoPinLeft, INPUT); // Sets the echoPin as an Input
+  pinMode(trigPinRight, OUTPUT); // Sets the trigPin as an Output
+  pinMode(echoPinRight, INPUT); // Sets the echoPin as an Input
   Serial.begin(9600); // Starts the serial communication
 }
 void loop() {
   // Clears the trigPin
-  digitalWrite(trigPin, LOW);
+  digitalWrite(trigPinLeft, LOW);
   delayMicroseconds(2);
   // Sets the trigPin on HIGH state for 10 micro seconds
-  digitalWrite(trigPin, HIGH);
+  digitalWrite(trigPinLeft, HIGH);
   delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
+  digitalWrite(trigPinLeft, LOW);
   // Reads the echoPin, returns the sound wave travel time in microseconds
-  duration = pulseIn(echoPin, HIGH);
+  durationLeft = pulseIn(echoPinLeft, HIGH);
   // Calculating the distance
-  distance = duration * 0.034 / 2;
+  distanceLeft = durationLeft * 0.034 / 2;
   // Prints the distance on the Serial Monitor
-  Serial.print("Distance: ");
-  Serial.println(distance);
+  Serial.print("Distance left: ");
+  Serial.println(distanceLeft);
+  // Clears the trigPin
+  digitalWrite(trigPinRight, LOW);
+  delayMicroseconds(2);
+  // Sets the trigPin on HIGH state for 10 micro seconds
+  digitalWrite(trigPinRight, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPinRight, LOW);
+  // Reads the echoPin, returns the sound wave travel time in microseconds
+  durationRight = pulseIn(echoPinRight, HIGH);
+  // Calculating the distance
+  distanceRight = durationRight * 0.034 / 2;
+  // Prints the distance on the Serial Monitor
+  Serial.print("Distance right: ");
+  Serial.println(distanceRight);
 }
