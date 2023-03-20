@@ -120,8 +120,50 @@ void move(int power, int direction) {
   
 }
 
+double read_distance(int trigPin, int echoPin){
+  long duration;
+  double distance, totalDistance, averageDistance;  
+
+  for(int i = 0; i < 100; i++){
+    digitalWrite(trigPin, LOW);
+
+    delayMicroseconds(2);
+
+    digitalWrite(trigPin, HIGH);
+
+    delayMicroseconds(10);
+
+    digitalWrite(trigPin, LOW);
+
+    duration = pulseIn(echoPin, HIGH);
+
+    distance = (duration * 0.034 / 2);  
+
+    totalDistance += distance;
+  }
+
+  averageDistance = totalDistance / 100;
+
+  return averageDistance;
+}
+
 void approach(){
-  
+  float tolerance = 5;
+
+  if(abs(read_distance(trigPinLeft, echoPinLeft) - read_distance(trigPinRight, echoPinRight))  > tolerance){
+      while(abs(read_distance(trigPinLeft, echoPinLeft) - read_distance(trigPinRight, echoPinRight))  > tolerance){
+        if (read_distance(trigPinLeft, echoPinLeft) < read_distance(trigPinRight, echoPinRight)){
+          // decrease power in RM
+          float multiplier = (read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight)) * 2 ;
+          analogWrite(pwmRight, (multiplier*100));
+        }
+        else {
+          // decrease power in LM
+          float multiplier = (read_distance(trigPinRight, echoPinRight) / read_distance(trigPinLeft, echoPinLeft)) * 2;
+          analogWrite(pwmLeft, (multiplier*100));
+        }
+
+      }
   
 
 }
