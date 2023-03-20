@@ -37,7 +37,7 @@ const int courseWidth = 248;
 const int courseHeight = 220;
 const float halfWallToRamp = 75.5;
 const float offset = 14.5;
-const int currentState = "BASE_SEARCH";
+const String currentState = "BASE_SEARCH";
 
 bool inState;
 
@@ -81,31 +81,65 @@ void setup() {
 }
 
 
+// void loop(){
+
+//   if(inState == false){
+
+//     inState = true;  
+
+//     if(Motor.isInState(STOP)){    
+//       Motor.transitionTo(WALL_APPROACH);
+//     } else if(Motor.isInState(WALL_APPROACH)){
+//       Motor.transitionTo(WALL_ENGAGE);
+//     } else if(Motor.isInState(WALL_ENGAGE)){    
+//       Motor.transitionTo(WALL_UP);
+//     } else if(Motor.isInState(WALL_UP)){     
+//       Motor.transitionTo(WALL_DOWN);   
+//     } else if(Motor.isInState(WALL_DOWN){   
+//       Motor.transitionTo(BASE_SEARCH);
+//     } 
+//     if(currentState == "WALL_APPROACH"){     
+//       wall_engage();
+//     }
+//     if(currentState == "BASE_SEARCH"){     
+//       // Motor.transitionTo(BASE_FOUND);
+//       base_search();
+//     }
+
+
+
+//   }
+// }
+
 void loop(){
 
-  if(inState == false){
+  move_forward(50);
 
-    inState = true;  
-
-    // if(Motor.isInState(STOP)){    
-    //   Motor.transitionTo(WALL_APPROACH);
-    // } else if(Motor.isInState(WALL_APPROACH)){
-    //   Motor.transitionTo(WALL_ENGAGE);
-    // } else if(Motor.isInState(WALL_ENGAGE)){    
-    //   Motor.transitionTo(WALL_UP);
-    // } else if(Motor.isInState(WALL_UP)){     
-    //   Motor.transitionTo(WALL_DOWN);   
-    // } else if(Motor.isInState(WALL_DOWN){   
-    //   Motor.transitionTo(BASE_SEARCH);
-    // } 
-    if(currentState == "BASE_SEARCH"){     
-      // Motor.transitionTo(BASE_FOUND);
-      base_search();
-    }
-
-
-  }
 }
+
+// void check_drift(){
+
+//   move_forward(50);
+
+//   int angle;
+//   int totalAngle;
+//   float averageAngle;
+
+//   do{
+
+//     for(int i = 0; i < 100; i++){
+//       angle = mpu.getAngleZ();
+//       totalAngle += angle;
+//     }
+
+//     averageAngle = totalAngle / 100;
+//   } while(averageAngle < 5);
+
+//   motor_stop();
+
+//   Serial.print(averageAngle);
+
+// }
 
 double read_distance(int trigPin, int echoPin){
   long duration;
@@ -138,18 +172,18 @@ double average_distance(){
   return 1.0247 * ( read_distance(trigPinLeft, echoPinLeft) + read_distance(trigPinRight, echoPinRight) ) / 2;
 }
 
-void move_forward(int speed){
-    analogWrite(pwmLeft, speed);
-    analogWrite(pwmRight, speed);
+void move_forward(int power){
+    analogWrite(pwmLeft, power);
+    analogWrite(pwmRight, power);
     digitalWrite(inALeft, HIGH);
     digitalWrite(inBLeft, LOW);
     digitalWrite(inARight, HIGH);
     digitalWrite(inBRight, LOW);
 }
 
-void move_backward(int speed){
-    analogWrite(pwmLeft, speed);
-    analogWrite(pwmRight, speed);
+void move_backward(int power){
+    analogWrite(pwmLeft, power);
+    analogWrite(pwmRight, power);
     digitalWrite(inALeft, LOW);
     digitalWrite(inBLeft, HIGH);
     digitalWrite(inARight, LOW);
@@ -184,48 +218,46 @@ void motor_stop(){
 
 }
 
-// void straighten(){
-//   if(read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) > (1 + /*RELATIVE ERROR */) || read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) < (1 - /*RELATIVE ERROR */)){
-//       while(read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) > (1 + /*RELATIVE ERROR */) || read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) < (1 - /*RELATIVE ERROR */)){
-//         if (read_distance(trigPinLeft, echoPinLeft) < read_distance(trigPinRight, echoPinRight)){
-//           // decrease power in RM
-//           int multiplier = read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight);
-//           analogWrite(pwmLeft, 100);
-//           analogWrite(pwmRight, (multiplier*100));
-//         }
-//         else {
-//           // decrease power in LM
-//           int multiplier = read_distance(trigPinRight, echoPinRight) / read_distance(trigPinLeft, echoPinLeft);
-//           analogWrite(pwmLeft, (multiplier*100));
-//           analogWrite(pwmRight, 100);
-//         }
+void straighten(){
+  if(read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) > (1 + 0.1) || read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) < (1 - 0.1) || abs(read_distance(trigPinLeft, echoPinLeft) - read_distance(trigPinRight, echoPinRight)) > 5){
+      while(read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) > (1 + 0.1) || read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) < (1 - 0.1)){
+        if (read_distance(trigPinLeft, echoPinLeft) < read_distance(trigPinRight, echoPinRight)){
+          // decrease power in RM
+          int multiplier = (read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight)) * 2;
+          analogWrite(pwmLeft, 100);
+          analogWrite(pwmRight, (multiplier*100));
+        }
+        else {
+          // decrease power in LM
+          int multiplier = (read_distance(trigPinRight, echoPinRight) / read_distance(trigPinLeft, echoPinLeft)) * 2;
+          analogWrite(pwmLeft, (multiplier*100));
+          analogWrite(pwmRight, 100);
+        }
 
-//       }
-//   }
+      }
+  }
 
-//   //whats the multiplier to fix for Absolute error? If same as relative error then can use above block ^^^^ if not then use below to create new logic
-  
-//   // if(abs(read_distance(trigPinLeft, echoPinLeft) - read_distance(trigPinRight, echoPinRight)) > /*ABSOLUTE ERROR*/){
-//   //   if (read_distance(trigPinLeft, echoPinLeft) < read_distance(trigPinRight, echoPinRight)){
-//   //     // decrease power in RM
-//   //     int multiplier = read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight);
-//   //     analogWrite(pwmLeft, 100);
-//   //     analogWrite(pwmRight, (multiplier*100));
-//   //   }
-//   //   else {
-//   //     // decrease power in LM
-//   //     int multiplier = read_distance(trigPinRight, echoPinRight) / read_distance(trigPinLeft, echoPinLeft);
-//   //     analogWrite(pwmLeft, (multiplier*100));
-//   //     analogWrite(pwmRight, 100);
-//   //   }
-    
-//   // }
-
-//   move_forward();
-// }
+  move_forward(50);
+}
 
 void imu_straighten(){
-  //use IMU to detect angle change and correct it
+  //clockwise = negative, decrease power in LM
+  //counter clockwise = positive, decrease  power in RM
+  while(1){
+    if(mpu.getAngleZ() > 0){
+      int multiplier = (100 - mpu.getAngleZ()) / 100;
+      analogWrite(pwmLeft, 100);
+      analogWrite(pwmRight, (multiplier*100));
+    } 
+
+    if(mpu.getAngleZ() < 0){
+      int multiplier = (100 - mpu.getAngleZ()) / 100;
+      analogWrite(pwmLeft, (multiplier*100));
+       analogWrite(pwmRight, 100); 
+    }
+    
+  }
+
 }
 
 void reset_imu(){
@@ -247,7 +279,7 @@ void wall_approach(){
 void wall_engage(){
   move_forward(50);
   while(average_distance()  > 5){
-    // straighten();
+    straighten();
   }
 
   inState = false;
@@ -282,103 +314,161 @@ void wall_down(){
   inState = false;
 }
 
-void base_search(){
+// void base_search(){ // flip
 
-  move_backward(10);
+//   move_backward(10);
 
-  while(average_distance() > (courseHeight -  (wallToRamp / 2))){
+//   while(average_distance() > (courseHeight -  (wallToRamp / 2))){
+//   }
+
+//   motor_stop();
+
+//   float expectedX = courseHeight - (wallToRamp / 2);
+
+//   float x = average_distance();
+
+//   if(x < expectedX){
+//     motor_stop();
+//     return;
+//   }
+
+//   reset_imu();
+  
+//   rotate_clockwise();
+//   while(mpu.getAngleZ() < 90){ 
+//     mpu.update();
+//   }
+
+//   motor_stop();
+
+  
+//   float yRight = average_distance();
+//   float yLeft = courseWidth - average_distance() - (2 * offset);
+//   float maxAngleLeft = atan(x/yLeft);
+//   float maxAngleRight = atan(x/yRight);
+
+//   reset_imu();
+
+//   rotate_counterclockwise();
+
+//   //REGION 1
+
+//   while(mpu.getAngleZ() < maxAngleRight){ 
+//     if(average_distance() < yRight ){
+//       motor_stop();
+//       break;
+//     }
+//   }
+
+//   //REGION 2
+
+//   while( mpu.getAngleZ() < (180 - maxAngleLeft) ){
+//     if(average_distance()  < x ){
+//       motor_stop();
+//       break;
+//     }
+//   }
+
+//   //REGION 3
+
+//   while( mpu.getAngleZ() < 180 ){
+//     if(average_distance() < yLeft){
+//       motor_stop();
+//       break;
+//     }
+//   }
+
+//   motor_stop();
+
+//   //FACE FORWARD
+
+//   reset_imu();
+
+//   rotate_clockwise();
+
+//   while( mpu.getAngleZ() != 90 ){
+//   }
+
+//   motor_stop();
+
+//   move_backward(50); 
+//   while(average_distance() != (courseHeight - wallToRamp)){ 
+//   }
+
+//   motor_stop();
+
+//   x -= (wallToRamp / 2); // or x = /* HEIGHT OF COURSE */ - average_distance() - /*  OFFSET */
+
+//   maxAngleLeft = atan(x/yLeft);
+//   maxAngleRight = atan(x/yRight);
+
+//   rotate_counterclockwise();
+//   while(mpu.getAngleZ() != 0 ){
+//   }
+
+//   motor_stop();
+
+//   rotate_clockwise();
+
+//   //REGION 3
+
+//   while( mpu.getAngleZ() < maxAngleLeft ){
+//     if(average_distance() < yLeft ){
+//       motor_stop();
+//       break;
+//     }
+//   }
+
+//   //REGION 2
+
+//   while( mpu.getAngleZ() < (180-maxAngleRight) ){
+//     if(average_distance() < x ){
+//       motor_stop();
+//       break;
+//     }
+//   }
+
+//   //REGION 1
+
+//   while( mpu.getAngleZ() < 180  ){
+//     if(average_distance() < yRight ){
+//       motor_stop();
+//       break;
+//     }
+//   }
+
+//   inState = false;
+
+// }
+
+
+void base_search(){ //no flip
+
+  move_forward(50);
+
+  while(average_distance() < (wallToRamp / 2)){
   }
 
   motor_stop();
 
-  float expectedX = courseHeight - (wallToRamp / 2);
-
-  float x = average_distance();
-
-  if(x < expectedX){
-    motor_stop();
-    return;
-  }
-
-  reset_imu();
+  float x = courseHeight - average_distance() - offset;
   
-  rotate_clockwise();
-  while(mpu.getAngleZ() < 90){ 
-    mpu.update();
+
+  while( mpu.getAngleZ() < 90 ){
+    rotate_clockwise();
   }
 
   motor_stop();
 
   
-  float yRight = average_distance();
-  float yLeft = courseWidth - average_distance() - (2 * offset);
+  float yLeft = average_distance() - offset;
+  float yRight = courseWidth - average_distance() + offset;
   float maxAngleLeft = atan(x/yLeft);
   float maxAngleRight = atan(x/yRight);
 
   reset_imu();
 
-  rotate_counterclockwise();
-
-  //REGION 1
-
-  while(mpu.getAngleZ() < maxAngleRight){ 
-    if(average_distance() < yRight ){
-      motor_stop();
-      break;
-    }
-  }
-
-  //REGION 2
-
-  while( mpu.getAngleZ() < (180 - maxAngleLeft) ){
-    if(average_distance()  < x ){
-      motor_stop();
-      break;
-    }
-  }
-
-  //REGION 3
-
-  while( mpu.getAngleZ() < 180 ){
-    if(average_distance() < yLeft){
-      motor_stop();
-      break;
-    }
-  }
-
-  motor_stop();
-
-  //FACE FORWARD
-
-  reset_imu();
-
-  rotate_clockwise();
-
-  while( mpu.getAngleZ() != 90 ){
-  }
-
-  motor_stop();
-
-  move_backward(50); 
-  while(average_distance() != (courseHeight - wallToRamp)){ 
-  }
-
-  motor_stop();
-
-  x -= (wallToRamp / 2); // or x = /* HEIGHT OF COURSE */ - average_distance() - /*  OFFSET */
-
-  maxAngleLeft = atan(x/yLeft);
-  maxAngleRight = atan(x/yRight);
-
-  rotate_counterclockwise();
-  while(mpu.getAngleZ() != 0 ){
-  }
-
-  motor_stop();
-
-  rotate_clockwise();
-
-  //REGION 3
+    //REGION 1
 
   while( mpu.getAngleZ() < maxAngleLeft ){
     if(average_distance() < yLeft ){
@@ -396,7 +486,7 @@ void base_search(){
     }
   }
 
-  //REGION 1
+  //REGION 3
 
   while( mpu.getAngleZ() < 180  ){
     if(average_distance() < yRight ){
@@ -404,6 +494,35 @@ void base_search(){
       break;
     }
   }
+
+  //FACE FORWARD
+
+  rotate_counterclockwise();
+
+  while(mpu.getAngleZ() != 90){
+  }
+
+  motor_stop();
+
+  //MOVE 2/3 LENGTH OF RAMP UP
+
+  move_forward(50); 
+  
+  while(average_distance() != (courseHeight - wallToRamp)){ 
+  }
+
+  motor_stop();
+
+  x -= wallToRamp / 2; 
+
+  maxAngleLeft = atan(x/yLeft);
+  maxAngleRight = atan(x/yRight);
+
+  rotate_counterclockwise();
+  while(mpu.getAngleZ() != 0){
+  }
+
+  motor_stop();
 
   inState = false;
 
@@ -418,6 +537,9 @@ void base_found(){
 
   motor_stop();
 }
+
+
+
 
 
 
