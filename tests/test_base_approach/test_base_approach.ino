@@ -57,12 +57,21 @@ void setup() {
 
 
 void loop() {
-  rampUp(50, 2);
+  Serial.println("1....2..");
+  delay(3000);
+  Serial.println("3!");
 
-  approach();
+  Serial.println("RAMP UP START");
+  rampUp(50, 1);
 
+  Serial.println("DELAY START");
+  delay(1000);
 
-  
+  Serial.println("APPROACH START");
+  approach(50);
+  Serial.println("APPROACH FINISH");
+
+  stop();
 
 }
 
@@ -70,13 +79,13 @@ void rampUp(float power, int direction) {
   float rampConst = 1000;
   float powerConst = 255;
   float timeOffset = millis();
-  Serial.print("Time offset = ");
-  Serial.println(timeOffset);
+  // Serial.print("Time offset = ");
+  // Serial.println(timeOffset);
   while((timeOffset + power*rampConst/powerConst) > float (millis()))
   {
     int rampPower = (millis() - timeOffset)*powerConst/rampConst;
     // set motor speed via pwm
-    move(rampPower, direction);
+    move(rampPower, power, direction);
     // debug
     /*Serial.print("Ramp power = ");
     Serial.println(rampPower);
@@ -86,24 +95,67 @@ void rampUp(float power, int direction) {
 
     delay(150);    
   }
-  move(power, 2);
+  move(power, 0, 2);
 
   
 }
 
-void move(int power, int direction) {
+void rampDown(float power, float initialPower, int direction) {
+  if(initialPower > power) {
+    float rampConst = 1000;
+    float powerConst = 255;
+    float timeOffset = millis();
+    Serial.print("Time offset = ");
+    Serial.println(timeOffset);
+    while((timeOffset + (initialPower-power)*rampConst/powerConst) > float (millis()))
+    {
+      float rampPower = initialPower - (millis() - timeOffset)*powerConst/rampConst;
+      // set motor speed via pwm
+      Serial.print("New Power: ");
+      Serial.println(rampPower);
+      Serial.print("Constant Power: ");
+      Serial.println(initialPower);
+      move(rampPower, initialPower, direction);
+      
+      // debug
+      /*Serial.print("Ramp power = ");
+      Serial.println(rampPower);
+      Serial.print("time: ");
+      Serial.println(millis());
+      Serial.println((power*rampConst)/powerConst);*/
+
+      delay(150);    
+    }
+    if(direction == 3){
+      move(power, initialPower, 3);
+    }
+
+    if(direction == 4){
+      move(power, initialPower, 4);
+    }
+  }
+}
+
+void stop() {
   // set motor speed via pwm
-  analogWrite(pwmLeft, power);
-  analogWrite(pwmRight, power);
+  move(0, 0, 0);
+}
+
+void move(float power, float initialPower, int direction) {
+  // set motor speed via pwm
+  // analogWrite(pwmLeft, power);
+  // analogWrite(pwmRight, power);
   // direction = 0 go forward
   if(direction == 0) {
-  // turn on motor and move forward
+  // stop motor
     digitalWrite(inALeft, LOW);
     digitalWrite(inBLeft, LOW);
     digitalWrite(inARight, LOW);
     digitalWrite(inBRight, LOW);
   }
   if(direction == 1) {
+    analogWrite(pwmLeft, power);
+    analogWrite(pwmRight, power);
   // turn on motor and move backward
     digitalWrite(inALeft, LOW);
     digitalWrite(inBLeft, HIGH);
@@ -111,11 +163,32 @@ void move(int power, int direction) {
     digitalWrite(inBRight, HIGH);
   }
   if(direction == 2) {
+    analogWrite(pwmLeft, power);
+    analogWrite(pwmRight, power);
+    // turn on motor and move forward
+    digitalWrite(inALeft, LOW);
+    digitalWrite(inBLeft, HIGH);
+    digitalWrite(inARight, LOW);
+    digitalWrite(inBRight, HIGH);
+  }
+  if(direction == 3){
+    analogWrite(pwmLeft, power);
+    analogWrite(pwmRight, initialPower);
+    // turn on motor and move forward
+    digitalWrite(inALeft, LOW);
+    digitalWrite(inBLeft, HIGH);
+    digitalWrite(inARight, LOW);
+    digitalWrite(inBRight, HIGH);
+  }
+  if(direction == 4){
+    analogWrite(pwmLeft, initialPower);
+    analogWrite(pwmRight, power);
     // turn on motor and move forward
     digitalWrite(inALeft, HIGH);
     digitalWrite(inBLeft, LOW);
     digitalWrite(inARight, HIGH);
     digitalWrite(inBRight, LOW);
+
   }
   
 }
@@ -124,7 +197,7 @@ double read_distance(int trigPin, int echoPin){
   long duration;
   double distance, totalDistance, averageDistance;  
 
-  for(int i = 0; i < 100; i++){
+  for(int i = 0; i < 20; i++){
     digitalWrite(trigPin, LOW);
 
     delayMicroseconds(2);
@@ -142,28 +215,54 @@ double read_distance(int trigPin, int echoPin){
     totalDistance += distance;
   }
 
-  averageDistance = totalDistance / 100;
+  averageDistance = totalDistance / 20;
+
+  // if(trigPin == trigPinLeft){
+  //   Serial.print("Left Sensor: ");
+  //   Serial.println(averageDistance);
+
+
+  // }
+
+  // if(trigPin == trigPinRight){
+  //   Serial.print("Right Sensor: ");
+  //   Serial.println(averageDistance);
+  // }
 
   return averageDistance;
 }
 
-void approach(){
+void approach(float power){
   float tolerance = 5;
+
+  int startTime = millis();
+  Serial.print("Start Time: ");
+  Serial.println(startTime);
 
   if(abs(read_distance(trigPinLeft, echoPinLeft) - read_distance(trigPinRight, echoPinRight))  > tolerance){
       while(abs(read_distance(trigPinLeft, echoPinLeft) - read_distance(trigPinRight, echoPinRight))  > tolerance){
-        if (read_distance(trigPinLeft, echoPinLeft) < read_distance(trigPinRight, echoPinRight)){
-          // decrease power in RM
-          float multiplier = (read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight)) * 2 ;
-          analogWrite(pwmRight, (multiplier*100));
-        }
-        else {
+        float leftSensor = read_distance(trigPinLeft, echoPinLeft);
+        float rightSensor = read_distance(trigPinRight, echoPinRight);
+
+        if (leftSensor < rightSensor){
           // decrease power in LM
-          float multiplier = (read_distance(trigPinRight, echoPinRight) / read_distance(trigPinLeft, echoPinLeft)) * 2;
-          analogWrite(pwmLeft, (multiplier*100));
+          float multiplier = (leftSensor / rightSensor);
+          Serial.print("multiplier: ");
+          Serial.println(multiplier);
+          rampDown(multiplier*power, power, 3);
+        }
+
+        if (rightSensor < leftSensor) {
+          // decrease power in RM
+          float multiplier = (rightSensor / leftSensor);
+          Serial.print("multiplier: ");
+          Serial.println(multiplier);
+          rampDown(multiplier*power, power, 4);
         }
 
       }
-  
+  }
+
+  rampUp(power, 2);
 
 }

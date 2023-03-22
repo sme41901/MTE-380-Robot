@@ -81,65 +81,35 @@ void setup() {
 }
 
 
-// void loop(){
-
-//   if(inState == false){
-
-//     inState = true;  
-
-//     if(Motor.isInState(STOP)){    
-//       Motor.transitionTo(WALL_APPROACH);
-//     } else if(Motor.isInState(WALL_APPROACH)){
-//       Motor.transitionTo(WALL_ENGAGE);
-//     } else if(Motor.isInState(WALL_ENGAGE)){    
-//       Motor.transitionTo(WALL_UP);
-//     } else if(Motor.isInState(WALL_UP)){     
-//       Motor.transitionTo(WALL_DOWN);   
-//     } else if(Motor.isInState(WALL_DOWN){   
-//       Motor.transitionTo(BASE_SEARCH);
-//     } 
-//     if(currentState == "WALL_APPROACH"){     
-//       wall_engage();
-//     }
-//     if(currentState == "BASE_SEARCH"){     
-//       // Motor.transitionTo(BASE_FOUND);
-//       base_search();
-//     }
-
-
-
-//   }
-// }
-
 void loop(){
 
-  move_forward(50);
+  if(inState == false){
 
+    inState = true;  
+
+    // if(Motor.isInState(STOP)){    
+    //   Motor.transitionTo(WALL_APPROACH);
+    // } else if(Motor.isInState(WALL_APPROACH)){
+    //   Motor.transitionTo(WALL_ENGAGE);
+    // } else if(Motor.isInState(WALL_ENGAGE)){    
+    //   Motor.transitionTo(WALL_UP);
+    // } else if(Motor.isInState(WALL_UP)){     
+    //   Motor.transitionTo(WALL_DOWN);   
+    // } else if(Motor.isInState(WALL_DOWN){   
+    //   Motor.transitionTo(BASE_SEARCH);
+    // } 
+    // if(currentState == "WALL_APPROACH"){     
+    //   wall_engage();
+    // }
+    if(currentState == "BASE_SEARCH"){     
+      // Motor.transitionTo(BASE_FOUND);
+      base_search();
+    }
+
+
+
+  }
 }
-
-// void check_drift(){
-
-//   move_forward(50);
-
-//   int angle;
-//   int totalAngle;
-//   float averageAngle;
-
-//   do{
-
-//     for(int i = 0; i < 100; i++){
-//       angle = mpu.getAngleZ();
-//       totalAngle += angle;
-//     }
-
-//     averageAngle = totalAngle / 100;
-//   } while(averageAngle < 5);
-
-//   motor_stop();
-
-//   Serial.print(averageAngle);
-
-// }
 
 double read_distance(int trigPin, int echoPin){
   long duration;
@@ -216,6 +186,90 @@ void motor_stop(){
     digitalWrite(inARight, LOW);
     digitalWrite(inBRight, LOW);
 
+}
+
+
+void rampUp(float power, int direction) {
+  float rampConst = 1000;
+  float powerConst = 255;
+  float timeOffset = millis();
+  Serial.print("Time offset = ");
+  Serial.println(timeOffset);
+  while((timeOffset + power*rampConst/powerConst) > float (millis()))
+  {
+    int rampPower = (millis() - timeOffset)*powerConst/rampConst;
+    // set motor speed via pwm
+    move(rampPower, direction);
+    // debug
+    /*Serial.print("Ramp power = ");
+    Serial.println(rampPower);
+    Serial.print("time: ");
+    Serial.println(millis());
+    Serial.println((power*rampConst)/powerConst);*/
+
+    delay(150);    
+  }
+  move(power, 2);
+}
+
+void rampDown(float power, float initialPower, int direction) {
+  if(initialPower > power) {
+    float rampConst = 6000;
+    float powerConst = 255;
+    float timeOffset = millis();
+    Serial.print("Time offset = ");
+    Serial.println(timeOffset);
+    while((timeOffset + (initialPower-power)*rampConst/powerConst) > float (millis()))
+    {
+      int rampPower = initialPower - (millis() - timeOffset)*powerConst/rampConst;
+      // set motor speed via pwm
+      move(rampPower, direction);
+      
+      // debug
+      /*Serial.print("Ramp power = ");
+      Serial.println(rampPower);
+      Serial.print("time: ");
+      Serial.println(millis());
+      Serial.println((power*rampConst)/powerConst);*/
+
+      delay(150);    
+    }
+    move(power, 2);
+  }
+}
+
+void move(int power, int direction) {
+  // set motor speed via pwm
+  analogWrite(pwmLeft, power);
+  analogWrite(pwmRight, power);
+  // direction = 0 go forward
+  if(direction == 0) {
+  // turn on motor and move forward
+    digitalWrite(inALeft, LOW);
+    digitalWrite(inBLeft, LOW);
+    digitalWrite(inARight, LOW);
+    digitalWrite(inBRight, LOW);
+  }
+  if(direction == 1) {
+  // turn on motor and move backward
+    digitalWrite(inALeft, LOW);
+    digitalWrite(inBLeft, HIGH);
+    digitalWrite(inARight, LOW);
+    digitalWrite(inBRight, HIGH);
+  }
+  if(direction == 2) {
+    // turn on motor and move forward
+    digitalWrite(inALeft, HIGH);
+    digitalWrite(inBLeft, LOW);
+    digitalWrite(inARight, HIGH);
+    digitalWrite(inBRight, LOW);
+  }
+  
+}
+
+void stop() {
+  // set motor speed via pwm
+  move(0, 0);
 }
 
 void straighten(){
@@ -444,7 +498,7 @@ void wall_down(){
 
 void base_search(){ //no flip
 
-  move_forward(50);
+  rampUp(50, 2);
 
   while(average_distance() < (wallToRamp / 2)){
   }
