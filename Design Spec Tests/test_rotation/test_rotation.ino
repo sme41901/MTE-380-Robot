@@ -43,44 +43,115 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   do {
-    Serial.print("Move CW");
+    Serial.print("Move CW ");
     Serial.println(mpu.getAngleZ());
-    rotate_counterclockwise();
+    rampUp(255, 3, 5000);
     mpu.update();    
   } while(mpu.getAngleZ() < 180);
-  stop_motors();
+  rampDown(0, 3, 5000, 255);
+  delay(2000);
   do {
-    Serial.print("Move CCW");
+    Serial.print("Move CCW ");
     Serial.println(mpu.getAngleZ());
-    rotate_clockwise();
+    rampUp(255, 4, 5000);
     mpu.update();  
   } while(mpu.getAngleZ() > 0);
-  stop_motors();
+  rampDown(0, 4, 5000, 255);
+  delay(2000);  
 }
 
-void stop_motors(){
-  digitalWrite(inALeft, LOW);
-  digitalWrite(inBLeft, LOW);
-  digitalWrite(inARight, LOW);
-  digitalWrite(inBRight, LOW);
+void rampUp(float power, int direction, float rampTime) {
+  float rampConst = rampTime;
+  float powerConst = 255;
+  float timeOffset = millis();
+  /*Serial.print("Time offset = ");
+  Serial.println(timeOffset);*/
+  while((timeOffset + power*rampConst/powerConst) > float (millis()))
+  {
+    int rampPower = (millis() - timeOffset)*powerConst/rampConst;
+    // set motor speed via pwm
+    move(rampPower, direction);
+    // debug
+    /*Serial.print("Ramp power = ");
+    Serial.println(rampPower);
+    Serial.print("time: ");
+    Serial.println(millis());
+    Serial.println((power*rampConst)/powerConst);
+    delay(15);*/
+  }
+  move(power, direction);
 }
 
-void rotate_clockwise(){
-  analogWrite(pwmLeft, 50);
-  analogWrite(pwmRight, 50);
-  digitalWrite(inALeft, HIGH);
-  digitalWrite(inBLeft, LOW);
-  digitalWrite(inARight, LOW);
-  digitalWrite(inBRight, HIGH);
+void rampDown(float power, int direction, float rampTime, float initialPower) {
+  if(initialPower > power) {
+    float rampConst = rampTime;
+    float powerConst = 255;
+    float timeOffset = millis();
+    /*Serial.print("Time offset = ");
+    Serial.println(timeOffset);*/
+    while((timeOffset + (initialPower-power)*rampConst/powerConst) > float (millis()))
+    {
+      int rampPower = initialPower - (millis() - timeOffset)*powerConst/rampConst;
+      // set motor speed via pwm
+      move(rampPower, direction);
+      
+      // debug
+      /*Serial.print("Ramp power = ");
+      Serial.println(rampPower);
+      Serial.print("time: ");
+      Serial.println(millis());
+      Serial.println((power*rampConst)/powerConst);
+      delay(15);  */  
+    }
+    move(power, direction);
+  }
 }
 
+void move(int power, int direction) {
+  // set motor speed via pwm
+  analogWrite(pwmLeft, power);
+  analogWrite(pwmRight, power);
+  // direction = 0 stop
+  if(direction == 0) {
+  // turn off motors
+    digitalWrite(inALeft, LOW);
+    digitalWrite(inBLeft, LOW);
+    digitalWrite(inARight, LOW);
+    digitalWrite(inBRight, LOW);
+  }
+  if(direction == 1) {
+  // turn on motor and move backward
+    digitalWrite(inALeft, LOW);
+    digitalWrite(inBLeft, HIGH);
+    digitalWrite(inARight, LOW);
+    digitalWrite(inBRight, HIGH);
+  }
+  if(direction == 2) {
+    // turn on motor and move forward
+    digitalWrite(inALeft, HIGH);
+    digitalWrite(inBLeft, LOW);
+    digitalWrite(inARight, HIGH);
+    digitalWrite(inBRight, LOW);
+  }
+  if(direction == 3) {
+    // turn on motor and rotate CW
+    digitalWrite(inALeft, HIGH);
+    digitalWrite(inBLeft, LOW);
+    digitalWrite(inARight, LOW);
+    digitalWrite(inBRight, HIGH);
+  }
+  if(direction == 4) {
+    // turn on motor and rotate CCW
+    digitalWrite(inALeft, LOW);
+    digitalWrite(inBLeft, HIGH);
+    digitalWrite(inARight, HIGH);
+    digitalWrite(inBRight, LOW);
+  }
+  
+}
 
-void rotate_counterclockwise(){
-  analogWrite(pwmLeft, 50);
-  analogWrite(pwmRight, 50);
-  digitalWrite(inALeft, LOW);
-  digitalWrite(inBLeft, HIGH);
-  digitalWrite(inARight, HIGH);
-  digitalWrite(inBRight, LOW);
+void stop() {
+  // set motor speed via pwm
+  move(0, 0);
 }
 
