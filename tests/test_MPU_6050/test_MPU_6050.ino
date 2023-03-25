@@ -23,9 +23,6 @@ void setup() {
      Serial.print(mpu.getAngleY());
      Serial.print("\tZ : ");
      Serial.println(mpu.getAngleZ());
-     if(mpu.getAngleZ() > 180 || mpu.getAngleZ() < 0) {
-      Serial.println("STOP");
-     }
      timer = millis();
    }
  }
