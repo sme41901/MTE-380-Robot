@@ -40,8 +40,8 @@
 
 const int trigPinLeft = 6;
 const int echoPinLeft = 5;
-const int trigPinRight = 9;
-const int echoPinRight = 10;
+const int trigPinRight = 10;
+const int echoPinRight = 9;
 // defines variables
 long durationLeft;
 int distanceLeft;

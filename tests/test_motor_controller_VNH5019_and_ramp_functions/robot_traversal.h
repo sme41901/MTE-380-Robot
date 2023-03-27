@@ -1,5 +1,7 @@
 // This is a header file containing functions and definitions 
-
+#include "Wire.h"
+#include <MPU6050_light.h>
+MPU6050 mpu(Wire);
 
 // DEFINTIONS 
 const int inALeft = 2;
@@ -10,144 +12,211 @@ const int inBRight = 12;
 const int pwmRight = 11;
 const int forward = 1;
 const int backward = 2;
+const int CW = 3;
+const int CCW = 4;
 
 // FUNCTIONS FROM:  test_motor_controller_VNH5019_and_ramp_functions
 
-void move(float power, int direction, float rampTime, float slowdown, unsigned long duration) {
-    // direction = 0 stop
-    // if(direction == stop) {
-    // // turn off motors
-    //   digitalWrite(inALeft, LOW);
-    //   digitalWrite(inBLeft, LOW);
-    //   digitalWrite(inARight, LOW);
-    //   digitalWrite(inBRight, LOW);
-    // }
+void stop(int currentDirection) {
+    int power = 255 * 0.05;
+    int counterTime = 100;
+    if (currentDirection == forward) {
+        analogWrite(pwmLeft, power);
+        analogWrite(pwmRight, power);
+        // turn on motor and move backward
+        digitalWrite(inALeft, LOW);
+        digitalWrite(inBLeft, HIGH);
+        digitalWrite(inARight, LOW);
+        digitalWrite(inBRight, HIGH);
+        delay(counterTime);
+    }
+    if (currentDirection == backward) {
+        analogWrite(pwmLeft, power);
+        analogWrite(pwmRight, power);
+        // turn on motor and move forward
+        digitalWrite(inALeft, HIGH);
+        digitalWrite(inBLeft, LOW);
+        digitalWrite(inARight, HIGH);
+        digitalWrite(inBRight, LOW);
+        delay(counterTime);
+    }
+    if (currentDirection == CW) {
+        analogWrite(pwmLeft, power);
+        analogWrite(pwmRight, power);
+        // turn on motor and move CCW
+        digitalWrite(inALeft, HIGH);
+        digitalWrite(inBLeft, LOW);
+        digitalWrite(inARight, LOW);
+        digitalWrite(inBRight, HIGH);
+        delay(counterTime);
+    }
+    if (currentDirection == CCW) {
+        analogWrite(pwmLeft, power);
+        analogWrite(pwmRight, power);
+        // turn on motor and move CW
+        digitalWrite(inALeft, LOW);
+        digitalWrite(inBLeft, HIGH);
+        digitalWrite(inARight, HIGH);
+        digitalWrite(inBRight, LOW);
+        delay(counterTime);
+    }
+    // turn motors off
+    digitalWrite(inALeft, LOW);
+    digitalWrite(inBLeft, LOW);
+    digitalWrite(inARight, LOW);
+    digitalWrite(inBRight, LOW);
+}
+//98% applied to pwmright at 1% power moving bkwd
+//going down the wall, give 1 to pwmright and give 5 to pwmleft
+void bridgeControl(int power, int direction) {
+    // set motor speed via pwm
+    analogWrite(pwmLeft, power/**0.945*/);
+    analogWrite(pwmRight, power);
     if (direction == forward) {
         // turn on motor and move forward
-        rampUp(power, forward, rampTime, NULL);
-        delay(duration);
-        if (slowdown > -1) {
-            rampDown(slowdown, forward, rampTime, power);
-        }
+        digitalWrite(inALeft, HIGH);
+        digitalWrite(inBLeft, LOW);
+        digitalWrite(inARight, HIGH);
+        digitalWrite(inBRight, LOW);
     }
     if (direction == backward) {
         // turn on motor and move backward
-        rampUp(power, backward, rampTime, NULL);
-        delay(duration);
-        if (slowdown > -1) {
-            rampDown(slowdown, forward, rampTime, power);
-        }
+        digitalWrite(inALeft, LOW);
+        digitalWrite(inBLeft, HIGH);
+        digitalWrite(inARight, LOW);
+        digitalWrite(inBRight, HIGH);
+    }
+    if (direction == CCW) {
+        // turn on motor and move CCW
+        digitalWrite(inALeft, LOW);
+        digitalWrite(inBLeft, HIGH);
+        digitalWrite(inARight, HIGH);
+        digitalWrite(inBRight, LOW);
+    }
+    if (direction == CW) {
+        // turn on motor and move CW
+        digitalWrite(inALeft, HIGH);
+        digitalWrite(inBLeft, LOW);
+        digitalWrite(inARight, LOW);
+        digitalWrite(inBRight, HIGH);
     }
 }
 
 void rotate(float power, int direction, float rampTime, float thetaAngle, bool checkForTarget) {
-    float rampTimeConst = rampTime;
-    float powerConst = 255;
-    float rampUpStartTime = millis();
-    int rampUpPower = 0, rampDownPower = 0;
-    float rampUpAngle, rampUpTime;
+  float rampTimeConst = rampTime;
+  float powerConst = 255;
+  float rampUpStartTime = millis();
+  int rampUpPower = 0, rampDownPower = 0;
+  float rampUpAngle, rampUpTime;
+  mpu.update();
+  float startAngle = mpu.getAngleZ(); 
+  Serial.print("START ANGLE: ");
+  Serial.println(startAngle);
+  //CCW rotation
+  if(thetaAngle > 0) {
+    while((rampUpStartTime + power*rampTimeConst/powerConst) > float (millis()) && (((thetaAngle/2 + startAngle)) > mpu.getAngleZ()) && !acquireTarget(checkForTarget, mpu.getAngleZ()))
+    {
+      mpu.update();
+      rampUpPower = (float (millis()) - rampUpStartTime)*powerConst/rampTimeConst;    
+      bridgeControl(rampUpPower, direction);
+      rampUpTime = float (millis()) - rampUpStartTime;
+    }
     mpu.update();
-    float startAngle = mpu.getAngleZ();
-    Serial.print("START ANGLE: ");
-    Serial.println(startAngle);
-    //CCW rotation
-    if (thetaAngle > 0) {
-        while ((rampUpStartTime + power * rampTimeConst / powerConst) > float(millis()) && (((thetaAngle / 2 + startAngle)) > mpu.getAngleZ()) /* && acquireTarget is false*/)
-        {
-            mpu.update();
-            rampUpPower = (float(millis()) - rampUpStartTime) * powerConst / rampTimeConst;
-            bridgeControl(rampUpPower, direction);
-            rampUpTime = float(millis()) - rampUpStartTime;
-        }
+    rampUpAngle = mpu.getAngleZ() - startAngle;  
+    Serial.print("RAMP UP ANGLE: ");
+    Serial.println(rampUpAngle);
+    Serial.print("RAMP UP TIME: ");
+    Serial.println(rampUpTime);
+    // check if robot finished ramping up already
+    if((thetaAngle/2 + startAngle) > mpu.getAngleZ()) {
+      while(mpu.getAngleZ() < (thetaAngle + startAngle - rampUpAngle)) {
         mpu.update();
-        rampUpAngle = mpu.getAngleZ() - startAngle;
-        Serial.print("RAMP UP ANGLE: ");
-        Serial.println(rampUpAngle);
-        Serial.print("RAMP UP TIME: ");
-        Serial.println(rampUpTime);
-        // check if robot finished ramping up already
-        if ((thetaAngle / 2 + startAngle) > mpu.getAngleZ()) {
-            while (mpu.getAngleZ() < (thetaAngle + startAngle - rampUpAngle)) {
-                mpu.update();
-                bridgeControl(power, direction);
-                Serial.print("CONSTANT SPEED ANGLE: ");
-                Serial.println(mpu.getAngleZ());
-            }
-            rampUpPower = power;
-        }
-        float rampDownStartTime = millis();
-        Serial.print("RAMP DOWN START TIME: ");
-        Serial.println(rampDownStartTime);
-        Serial.print("RAMP UP POWER: ");
-        Serial.println(rampUpPower);
-        while ((rampDownStartTime + rampUpTime) > float(millis()) && (thetaAngle + startAngle) > mpu.getAngleZ())
-        {
-            mpu.update();
-            rampDownPower = rampUpPower - (float(millis()) - rampDownStartTime) * powerConst / (rampUpTime);
-            if (rampDownPower < 0) {
-                rampDownPower = 0;
-            }
-            bridgeControl(rampDownPower, direction);
-            Serial.print("RAMP DOWN ");
-            Serial.println(rampDownPower);
-            Serial.print("RAMP DOWN ANGLE: ");
-            Serial.println(mpu.getAngleZ());
-        }
-        bridgeControl(0, direction);
-        float rampDownTime = float(millis()) - rampDownStartTime;
-        Serial.print("RAMP DOWN TIME: ");
-        Serial.println(rampDownTime);
-        stop(direction);
+        bridgeControl(power, direction);      
+        Serial.print("CONSTANT SPEED ANGLE: ");
+        Serial.println(mpu.getAngleZ());
+      }
+      rampUpPower = power;
     }
-    //CW rotation
-    if (thetaAngle < 0) {
-        while ((rampUpStartTime + power * rampTimeConst / powerConst) > float(millis()) && (((thetaAngle / 2 + startAngle)) < mpu.getAngleZ()) /* && acquireTarget is false*/)
-        {
-            mpu.update();
-            rampUpPower = (float(millis()) - rampUpStartTime) * powerConst / rampTimeConst;
-            bridgeControl(rampUpPower, direction);
-            rampUpTime = float(millis()) - rampUpStartTime;
-        }
+    if(acquireTarget(checkForTarget, mpu.getAngleZ())) {
+      //approach      
+    } 
+    float rampDownStartTime = millis();
+    Serial.print("RAMP DOWN START TIME: ");
+    Serial.println(rampDownStartTime); 
+    Serial.print("RAMP UP POWER: ");
+    Serial.println(rampUpPower);
+    while((rampDownStartTime + rampUpTime) > float (millis()) && (thetaAngle + startAngle) > mpu.getAngleZ()) 
+    {
+      mpu.update();
+      rampDownPower = rampUpPower - (float (millis()) - rampDownStartTime)*powerConst/(rampUpTime);
+      if(rampDownPower < 0) {
+        rampDownPower = 0;
+      }
+      bridgeControl(rampDownPower, direction);
+      Serial.print("RAMP DOWN ");
+      Serial.println(rampDownPower);
+      Serial.print("RAMP DOWN ANGLE: ");
+      Serial.println(mpu.getAngleZ());
+    }
+    bridgeControl(0, direction);
+    float rampDownTime = float (millis()) - rampDownStartTime;
+    Serial.print("RAMP DOWN TIME: ");
+    Serial.println(rampDownTime);
+    stop(direction);
+  }
+  //CW rotation
+  if(thetaAngle < 0) {
+    while((rampUpStartTime + power*rampTimeConst/powerConst) > float (millis()) && (((thetaAngle/2 + startAngle)) < mpu.getAngleZ()) && !acquireTarget(checkForTarget, mpu.getAngleZ()))
+    {
+      mpu.update();
+      rampUpPower = (float (millis()) - rampUpStartTime)*powerConst/rampTimeConst;    
+      bridgeControl(rampUpPower, direction);
+      rampUpTime = float (millis()) - rampUpStartTime;
+    }
+    mpu.update();
+    rampUpAngle = startAngle - mpu.getAngleZ();  
+    Serial.print("RAMP UP ANGLE: ");
+    Serial.println(rampUpAngle);
+    Serial.print("RAMP UP TIME: ");
+    Serial.println(rampUpTime);
+    // check if robot finished ramping up already
+    if(((thetaAngle/2 + startAngle)) < mpu.getAngleZ()) {
+      while(mpu.getAngleZ() > (thetaAngle + startAngle + rampUpAngle)) {
         mpu.update();
-        rampUpAngle = startAngle - mpu.getAngleZ();
-        Serial.print("RAMP UP ANGLE: ");
-        Serial.println(rampUpAngle);
-        Serial.print("RAMP UP TIME: ");
-        Serial.println(rampUpTime);
-        // check if robot finished ramping up already
-        if (((thetaAngle / 2 + startAngle)) < mpu.getAngleZ()) {
-            while (mpu.getAngleZ() > (thetaAngle + startAngle + rampUpAngle)) {
-                mpu.update();
-                bridgeControl(power, direction);
-                Serial.print("CONSTANT SPEED ANGLE: ");
-                Serial.println(mpu.getAngleZ());
-            }
-            rampUpPower = power;
-        }
-        float rampDownStartTime = millis();
-        Serial.print("RAMP DOWN START TIME: ");
-        Serial.println(rampDownStartTime);
-        Serial.print("RAMP UP POWER: ");
-        Serial.println(rampUpPower);
-        while ((rampDownStartTime + rampUpTime) > float(millis()) && (thetaAngle + startAngle) < mpu.getAngleZ())
-        {
-            mpu.update();
-            rampDownPower = rampUpPower - (float(millis()) - rampDownStartTime) * powerConst / (rampUpTime);
-            if (rampDownPower < 0) {
-                rampDownPower = 0;
-            }
-            bridgeControl(rampDownPower, direction);
-            Serial.print("RAMP DOWN ");
-            Serial.println(rampDownPower);
-            Serial.print("RAMP DOWN ANGLE: ");
-            Serial.println(mpu.getAngleZ());
-        }
-        bridgeControl(0, direction);
-        float rampDownTime = float(millis()) - rampDownStartTime;
-        Serial.print("RAMP DOWN TIME: ");
-        Serial.println(rampDownTime);
-        stop(direction);
+        bridgeControl(power, direction);      
+        Serial.print("CONSTANT SPEED ANGLE: ");
+        Serial.println(mpu.getAngleZ());
+      }
+      rampUpPower = power;
     }
+    // check if robot sees the post
+    if(acquireTarget(checkForTarget, mpu.getAngleZ())) {
+      //approach      
+    }    
+    float rampDownStartTime = millis();
+    Serial.print("RAMP DOWN START TIME: ");
+    Serial.println(rampDownStartTime); 
+    Serial.print("RAMP UP POWER: ");
+    Serial.println(rampUpPower);
+    while((rampDownStartTime + rampUpTime) > float (millis()) && (thetaAngle + startAngle) < mpu.getAngleZ()) 
+    {
+      mpu.update();
+      rampDownPower = rampUpPower - (float (millis()) - rampDownStartTime)*powerConst/(rampUpTime);
+      if(rampDownPower < 0) {
+        rampDownPower = 0;
+      }
+      bridgeControl(rampDownPower, direction);
+      Serial.print("RAMP DOWN ");
+      Serial.println(rampDownPower);
+      Serial.print("RAMP DOWN ANGLE: ");
+      Serial.println(mpu.getAngleZ());
+    }
+    bridgeControl(0, direction);
+    float rampDownTime = float (millis()) - rampDownStartTime;
+    Serial.print("RAMP DOWN TIME: ");
+    Serial.println(rampDownTime);
+    stop(direction);
+  }  
 }
 
 void rampUp(float power, int direction, float rampTime, float angle) {
@@ -242,94 +311,33 @@ void rampDown(float power, int direction, float rampTime, float initialPower) {
     }
 }
 
-void stop(int currentDirection) {
-    int power = 255 * 0.05;
-    int counterTime = 100;
-    if (currentDirection == forward) {
-        analogWrite(pwmLeft, power);
-        analogWrite(pwmRight, power);
-        // turn on motor and move backward
-        digitalWrite(inALeft, LOW);
-        digitalWrite(inBLeft, HIGH);
-        digitalWrite(inARight, LOW);
-        digitalWrite(inBRight, HIGH);
-        delay(counterTime);
-    }
-    if (currentDirection == backward) {
-        analogWrite(pwmLeft, power);
-        analogWrite(pwmRight, power);
-        // turn on motor and move forward
-        digitalWrite(inALeft, HIGH);
-        digitalWrite(inBLeft, LOW);
-        digitalWrite(inARight, HIGH);
-        digitalWrite(inBRight, LOW);
-        delay(counterTime);
-    }
-    if (currentDirection == CW) {
-        analogWrite(pwmLeft, power);
-        analogWrite(pwmRight, power);
-        // turn on motor and move CCW
-        digitalWrite(inALeft, HIGH);
-        digitalWrite(inBLeft, LOW);
-        digitalWrite(inARight, LOW);
-        digitalWrite(inBRight, HIGH);
-        delay(counterTime);
-    }
-    if (currentDirection == CCW) {
-        analogWrite(pwmLeft, power);
-        analogWrite(pwmRight, power);
-        // turn on motor and move CW
-        digitalWrite(inALeft, LOW);
-        digitalWrite(inBLeft, HIGH);
-        digitalWrite(inARight, HIGH);
-        digitalWrite(inBRight, LOW);
-        delay(counterTime);
-    }
-    // turn motors off
-    digitalWrite(inALeft, LOW);
-    digitalWrite(inBLeft, LOW);
-    digitalWrite(inARight, LOW);
-    digitalWrite(inBRight, LOW);
-}
 
-//98% applied to pwmright at 1% power moving bkwd
-//going down the wall, give 1 to pwmright and give 5 to pwmleft
-void bridgeControl(int power, int direction) {
-    // set motor speed via pwm
-    analogWrite(pwmLeft, power/**0.945*/);
-    analogWrite(pwmRight, power);
-    if (direction == backward) {
-        // turn on motor and move forward
-        digitalWrite(inALeft, HIGH);
-        digitalWrite(inBLeft, LOW);
-        digitalWrite(inARight, HIGH);
-        digitalWrite(inBRight, LOW);
-    }
+void move(float power, int direction, float rampTime, float slowdown, unsigned long duration) {
+    // direction = 0 stop
+    // if(direction == stop) {
+    // // turn off motors
+    //   digitalWrite(inALeft, LOW);
+    //   digitalWrite(inBLeft, LOW);
+    //   digitalWrite(inARight, LOW);
+    //   digitalWrite(inBRight, LOW);
+    // }
     if (direction == forward) {
+        // turn on motor and move forward
+        rampUp(power, forward, rampTime, NULL);
+        delay(duration);
+        if (slowdown > -1) {
+            rampDown(slowdown, forward, rampTime, power);
+        }
+    }
+    if (direction == backward) {
         // turn on motor and move backward
-        digitalWrite(inALeft, LOW);
-        digitalWrite(inBLeft, HIGH);
-        digitalWrite(inARight, LOW);
-        digitalWrite(inBRight, HIGH);
-    }
-    if (direction == CW) {
-        // turn on motor and move CW
-        digitalWrite(inALeft, LOW);
-        digitalWrite(inBLeft, HIGH);
-        digitalWrite(inARight, HIGH);
-        digitalWrite(inBRight, LOW);
-    }
-    if (direction == CCW) {
-        // turn on motor and move CCW
-        digitalWrite(inALeft, HIGH);
-        digitalWrite(inBLeft, LOW);
-        digitalWrite(inARight, LOW);
-        digitalWrite(inBRight, HIGH);
+        rampUp(power, backward, rampTime, NULL);
+        delay(duration);
+        if (slowdown > -1) {
+            rampDown(slowdown, forward, rampTime, power);
+        }
     }
 }
-
-
-
 // FUNCTIONS FROM: test_base_approach
 
 double read_distance(int trigPin, int echoPin) {
