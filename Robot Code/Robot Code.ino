@@ -368,161 +368,103 @@ void wall_down(){
   inState = false;
 }
 
-// void base_search(){ // flip
+void base_search(){ // flip
 
-//   move_backward(10);
+  move_backward(10);
 
-//   while(average_distance() > (courseHeight -  (wallToRamp / 2))){
-//   }
-
-//   motor_stop();
-
-//   float expectedX = courseHeight - (wallToRamp / 2);
-
-//   float x = average_distance();
-
-//   if(x < expectedX){
-//     motor_stop();
-//     return;
-//   }
-
-//   reset_imu();
-  
-//   rotate_clockwise();
-//   while(mpu.getAngleZ() < 90){ 
-//     mpu.update();
-//   }
-
-//   motor_stop();
-
-  
-//   float yRight = average_distance();
-//   float yLeft = courseWidth - average_distance() - (2 * offset);
-//   float maxAngleLeft = atan(x/yLeft);
-//   float maxAngleRight = atan(x/yRight);
-
-//   reset_imu();
-
-//   rotate_counterclockwise();
-
-//   //REGION 1
-
-//   while(mpu.getAngleZ() < maxAngleRight){ 
-//     if(average_distance() < yRight ){
-//       motor_stop();
-//       break;
-//     }
-//   }
-
-//   //REGION 2
-
-//   while( mpu.getAngleZ() < (180 - maxAngleLeft) ){
-//     if(average_distance()  < x ){
-//       motor_stop();
-//       break;
-//     }
-//   }
-
-//   //REGION 3
-
-//   while( mpu.getAngleZ() < 180 ){
-//     if(average_distance() < yLeft){
-//       motor_stop();
-//       break;
-//     }
-//   }
-
-//   motor_stop();
-
-//   //FACE FORWARD
-
-//   reset_imu();
-
-//   rotate_clockwise();
-
-//   while( mpu.getAngleZ() != 90 ){
-//   }
-
-//   motor_stop();
-
-//   move_backward(50); 
-//   while(average_distance() != (courseHeight - wallToRamp)){ 
-//   }
-
-//   motor_stop();
-
-//   x -= (wallToRamp / 2); // or x = /* HEIGHT OF COURSE */ - average_distance() - /*  OFFSET */
-
-//   maxAngleLeft = atan(x/yLeft);
-//   maxAngleRight = atan(x/yRight);
-
-//   rotate_counterclockwise();
-//   while(mpu.getAngleZ() != 0 ){
-//   }
-
-//   motor_stop();
-
-//   rotate_clockwise();
-
-//   //REGION 3
-
-//   while( mpu.getAngleZ() < maxAngleLeft ){
-//     if(average_distance() < yLeft ){
-//       motor_stop();
-//       break;
-//     }
-//   }
-
-//   //REGION 2
-
-//   while( mpu.getAngleZ() < (180-maxAngleRight) ){
-//     if(average_distance() < x ){
-//       motor_stop();
-//       break;
-//     }
-//   }
-
-//   //REGION 1
-
-//   while( mpu.getAngleZ() < 180  ){
-//     if(average_distance() < yRight ){
-//       motor_stop();
-//       break;
-//     }
-//   }
-
-//   inState = false;
-
-// }
-
-
-void base_search(){ //no flip
-
-  rampUp(50, 2);
-
-  while(average_distance() < (wallToRamp / 2)){
+  while(average_distance() > (courseHeight -  (wallToRamp / 2))){
   }
 
   motor_stop();
 
-  float x = courseHeight - average_distance() - offset;
-  
+  float expectedX = courseHeight - (wallToRamp / 2);
 
-  while( mpu.getAngleZ() < 90 ){
-    rotate_clockwise();
+  float x = average_distance();
+
+  if(x < expectedX){
+    motor_stop();
+    return;
+  }
+
+  reset_imu();
+  
+  rotate_clockwise();
+  while(mpu.getAngleZ() < 90){ 
+    mpu.update();
   }
 
   motor_stop();
 
   
-  float yLeft = average_distance() - offset;
-  float yRight = courseWidth - average_distance() + offset;
+  float yRight = average_distance();
+  float yLeft = courseWidth - average_distance() - (2 * offset);
   float maxAngleLeft = atan(x/yLeft);
   float maxAngleRight = atan(x/yRight);
 
   reset_imu();
 
-    //REGION 1
+  rotate_counterclockwise();
+
+  //REGION 1
+
+  while(mpu.getAngleZ() < maxAngleRight){ 
+    if(average_distance() < yRight ){
+      motor_stop();
+      break;
+    }
+  }
+
+  //REGION 2
+
+  while( mpu.getAngleZ() < (180 - maxAngleLeft) ){
+    if(average_distance()  < x ){
+      motor_stop();
+      break;
+    }
+  }
+
+  //REGION 3
+
+  while( mpu.getAngleZ() < 180 ){
+    if(average_distance() < yLeft){
+      motor_stop();
+      break;
+    }
+  }
+
+  motor_stop();
+
+  //FACE FORWARD
+
+  reset_imu();
+
+  rotate_clockwise();
+
+  while( mpu.getAngleZ() != 90 ){
+  }
+
+  motor_stop();
+
+  move_backward(50); 
+  while(average_distance() != (courseHeight - wallToRamp)){ 
+  }
+
+  motor_stop();
+
+  x -= (wallToRamp / 2); // or x = /* HEIGHT OF COURSE */ - average_distance() - /*  OFFSET */
+
+  maxAngleLeft = atan(x/yLeft);
+  maxAngleRight = atan(x/yRight);
+
+  rotate_counterclockwise();
+  while(mpu.getAngleZ() != 0 ){
+  }
+
+  motor_stop();
+
+  rotate_clockwise();
+
+  //REGION 3
 
   while( mpu.getAngleZ() < maxAngleLeft ){
     if(average_distance() < yLeft ){
@@ -540,7 +482,7 @@ void base_search(){ //no flip
     }
   }
 
-  //REGION 3
+  //REGION 1
 
   while( mpu.getAngleZ() < 180  ){
     if(average_distance() < yRight ){
@@ -549,38 +491,123 @@ void base_search(){ //no flip
     }
   }
 
-  //FACE FORWARD
-
-  rotate_counterclockwise();
-
-  while(mpu.getAngleZ() != 90){
-  }
-
-  motor_stop();
-
-  //MOVE 2/3 LENGTH OF RAMP UP
-
-  move_forward(50); 
-  
-  while(average_distance() != (courseHeight - wallToRamp)){ 
-  }
-
-  motor_stop();
-
-  x -= wallToRamp / 2; 
-
-  maxAngleLeft = atan(x/yLeft);
-  maxAngleRight = atan(x/yRight);
-
-  rotate_counterclockwise();
-  while(mpu.getAngleZ() != 0){
-  }
-
-  motor_stop();
-
   inState = false;
 
 }
+
+
+// void base_search(){ //no flip
+
+//   rampUp(50, 2);
+
+//   while(average_distance() < (wallToRamp / 2)){
+//   }
+
+//   motor_stop();
+
+//   float x = courseHeight - average_distance() - offset;
+  
+
+//   while( mpu.getAngleZ() < 90 ){
+//     rotate_clockwise();
+//     // rampUp()
+//   }
+
+//   motor_stop();
+
+  
+//   float yLeft = average_distance() - offset;
+//   float yRight = courseWidth - average_distance() + offset;
+//   float maxAngleLeft = atan(x/yLeft);
+//   float maxAngleRight = atan(x/yRight);
+
+//   reset_imu();
+
+//   //REGION 1
+
+//   while( mpu.getAngleZ() < maxAngleLeft ){
+//     if(average_distance() < yLeft ){
+//       motor_stop();
+//       break;
+//     }
+//   }
+
+//   //REGION 2
+
+//   while( mpu.getAngleZ() < (180-maxAngleRight) ){
+//     if(average_distance() < x ){
+//       motor_stop();
+//       break;
+//     }
+//   }
+
+//   //REGION 3
+
+//   while( mpu.getAngleZ() < 180  ){
+//     if(average_distance() < yRight ){
+//       motor_stop();
+//       break;
+//     }
+//   }
+
+//   //FACE FORWARD
+
+//   rotate_counterclockwise();
+
+//   while(mpu.getAngleZ() != 90){
+//   }
+
+//   motor_stop();
+
+//   //rampUp();
+  
+//   while(average_distance() != (courseHeight - wallToRamp)){ 
+//   }
+
+//   //rampDown();
+
+//   x -= wallToRamp / 2; 
+
+//   maxAngleLeft = atan(x/yLeft);
+//   maxAngleRight = atan(x/yRight);
+
+//   //rampUp();
+
+//   while(mpu.getAngleZ() != 0){
+//   }
+
+//   //rampDown();
+
+//       //REGION 1
+
+//   while( mpu.getAngleZ() < maxAngleLeft ){
+//     if(average_distance() < yLeft ){
+//       motor_stop();
+//       break;
+//     }
+//   }
+
+//   //REGION 2
+
+//   while( mpu.getAngleZ() < (180-maxAngleRight) ){
+//     if(average_distance() < x ){
+//       motor_stop();
+//       break;
+//     }
+//   }
+
+//   //REGION 3
+
+//   while( mpu.getAngleZ() < 180  ){
+//     if(average_distance() < yRight ){
+//       motor_stop();
+//       break;
+//     }
+//   }
+
+//   inState = false;
+
+// }
 
 void base_found(){
   move_backward(50);
