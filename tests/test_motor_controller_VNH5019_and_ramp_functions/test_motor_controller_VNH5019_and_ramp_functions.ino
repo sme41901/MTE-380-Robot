@@ -2,26 +2,9 @@
 #include <MPU6050_light.h>
 #include "robot_traversal.h"
 
-//US sensors
-const int trigPinLeft = 10;
-const int echoPinLeft = 9;
-const int trigPinRight = 6;
-const int echoPinRight = 5;
-
-int sensorToCentreOffset = 1;
-const float rampLength = 50;
-
-// these values get updated in void loop
-float xDistanceFromWallToBoundary = 0;
-float yDistanceFromWallToBoundary = 0;
-
-
-const int numberOfStages = 3;
-int currentStage = 0;
-float searchDistanceIncrement = rampLength/numberOfStages;
-
 
 void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
   // put your setup code here, to run once:
 //Initialize Left Motor
   pinMode(inALeft, OUTPUT);
@@ -55,17 +38,29 @@ void loop() {
   // put your main code here, to run repeatedly:
 // he was supposed to make the 
   // rotate test
+
+  // for 180 spin
+  // low power: 0.12 and 0.945
+  // med power: 0.2 and 0.9065
+  // high power: 0.5 and 0.8565
+
+  // for 90 spin
+  // high power: 0.5 and 0.811
   
   delay(2000);
-  rotate(255*0.25, CCW, 1000, (180*0.85), false);
+  rotate(255*0.5, CCW, 1000, 90*0.811, false);
+  mpu.update();
+  delay(5000);
+  mpu.update();
+  rotate(255*0.2, CW, 1000, -180*0.9065, true);
+  mpu.update();
+  delay(5000);
+  // rotate(255*0.5, CCW, 1000, 90*0.811, false);
   // mpu.update();
-  // delay(2000);
-  // rotate(255*0.10, CCW, 1000, (180*0.9), false);
-  // mpu.update();
-
 //clean and disengage
 // delay(2000);
-// move(255*0.5, forward, 1500, -1, 10000);
+// mpu.update();
+// move(255*1, forward, 1000, 0, 20000);
 // move(255*0.8, forward, 1500, -1, 2000);
 // move(255*1.0, forward, 1500, 0, 1000);
 
@@ -80,8 +75,6 @@ void loop() {
   //   rampDown(255*0.4, 2, 1000, 255);
   //   delay(5000);
   // }
-
-  
 }
 //talked to edward and come up with design specification test plan
 //condition, robot rotates and goes from vertical to horizontal, with the 2 magnets no longer engaged with the wall
@@ -228,49 +221,49 @@ void loop() {
 //   }  
 // }
 
-bool acquireTarget(bool checkForTarget, float currentAngle) {
-  bool result = false;
-  if(!checkForTarget) {
-    return result;
-  }    
-  else {
-    // stage 0: check in front of you
-    if(currentStage == 0) {
-      if(readDistance(trigPinLeft, echoPinLeft) < yDistanceFromWallToBoundary || readDistance(trigPinRight, echoPinRight) < yDistanceFromWallToBoundary) {
-        //approach        
-      }
-    }
-    // stage 1 to numberOfStages - 1
-    else {
-      double yDistanceFromRobotToWall =  yDistanceFromWallToBoundary + sensorToCentreOffset - (currentStage*searchDistanceIncrement);
-      double xDistanceFromRobotToWall =  xDistanceFromWallToBoundary + sensorToCentreOffset;
-      double regionOneAngle = atan2(yDistanceFromRobotToWall, xDistanceFromRobotToWall) * 180/PI;           
-      double regionTwoAngle = 180 - 2*regionOneAngle;
+// bool acquireTarget(bool checkForTarget, float currentAngle, float xDistanceFromWallToBoundary, float yDistanceFromWallToBoundary) {
+//   bool result = false;
+//   if(!checkForTarget) {
+//     return result;
+//   }    
+//   else {
+//     // stage 0: check in front of you
+//     if(currentStage == 0) {
+//       if(readDistance(trigPinLeft, echoPinLeft) < yDistanceFromWallToBoundary || readDistance(trigPinRight, echoPinRight) < yDistanceFromWallToBoundary) {
+//         //approach        
+//       }
+//     }
+//     // stage 1 to numberOfStages - 1
+//     else {
+//       double yDistanceFromRobotToWall =  yDistanceFromWallToBoundary + sensorToCentreOffset - (currentStage*searchDistanceIncrement);
+//       double xDistanceFromRobotToWall =  xDistanceFromWallToBoundary + sensorToCentreOffset;
+//       double regionOneAngle = atan2(yDistanceFromRobotToWall, xDistanceFromRobotToWall) * 180/PI;           
+//       double regionTwoAngle = 180 - 2*regionOneAngle;
       
-      // check region 1 for post
-      while(currentAngle > (90 - regionOneAngle)) {
-        if(readDistance(trigPinLeft, echoPinLeft) < xDistanceFromRobotToWall || readDistance(trigPinRight, echoPinRight) < xDistanceFromRobotToWall) {
-          return !result;
-        }
-      }
+//       // check region 1 for post
+//       while(currentAngle > (90 - regionOneAngle)) {
+//         if(readDistance(trigPinLeft, echoPinLeft) < xDistanceFromRobotToWall || readDistance(trigPinRight, echoPinRight) < xDistanceFromRobotToWall) {
+//           return !result;
+//         }
+//       }
 
-      //check region 2 for post
-      while(currentAngle > (90 - regionTwoAngle)) {
-        if(readDistance(trigPinLeft, echoPinLeft) < yDistanceFromRobotToWall || readDistance(trigPinRight, echoPinRight) < yDistanceFromRobotToWall) {
-          return !result;
-        }
-      }
+//       //check region 2 for post
+//       while(currentAngle > (90 - regionTwoAngle)) {
+//         if(readDistance(trigPinLeft, echoPinLeft) < yDistanceFromRobotToWall || readDistance(trigPinRight, echoPinRight) < yDistanceFromRobotToWall) {
+//           return !result;
+//         }
+//       }
 
-      //check region 3 for post
-      while(currentAngle > (-90)) {
-        if(readDistance(trigPinLeft, echoPinLeft) < xDistanceFromRobotToWall || readDistance(trigPinRight, echoPinRight) < xDistanceFromRobotToWall) {
-          return !result;
-        }
-      }
-    }
-  }
-  return result;
-}
+//       //check region 3 for post
+//       while(currentAngle > (-90)) {
+//         if(readDistance(trigPinLeft, echoPinLeft) < xDistanceFromRobotToWall || readDistance(trigPinRight, echoPinRight) < xDistanceFromRobotToWall) {
+//           return !result;
+//         }
+//       }
+//     }
+//   }
+//   return result;
+// }
 
 // void rampUp(float power, int direction, float rampTime, float angle) {
 //   bool rampUpComplete = true;
@@ -449,29 +442,29 @@ bool acquireTarget(bool checkForTarget, float currentAngle) {
 //   }
 // }
 
-double readDistance(int trigPin, int echoPin){
-  long duration;
-  double distance, totalDistance, averageDistance;  
+// double readDistance(int trigPin, int echoPin){
+//   long duration;
+//   double distance, totalDistance, averageDistance;  
 
-  for(int i = 0; i < 50; i++){
-    digitalWrite(trigPin, LOW);
+//   for(int i = 0; i < 50; i++){
+//     digitalWrite(trigPin, LOW);
 
-    delayMicroseconds(2);
+//     delayMicroseconds(2);
 
-    digitalWrite(trigPin, HIGH);
+//     digitalWrite(trigPin, HIGH);
 
-    delayMicroseconds(10);
+//     delayMicroseconds(10);
 
-    digitalWrite(trigPin, LOW);
+//     digitalWrite(trigPin, LOW);
 
-    duration = pulseIn(echoPin, HIGH);
+//     duration = pulseIn(echoPin, HIGH);
 
-    distance = (duration * 0.034 / 2);  
+//     distance = (duration * 0.034 / 2);  
 
-    totalDistance += distance;
-  }
+//     totalDistance += distance;
+//   }
 
-  averageDistance = totalDistance / 50;
+//   averageDistance = totalDistance / 50;
 
-  return averageDistance;
-}
+//   return averageDistance;
+// }

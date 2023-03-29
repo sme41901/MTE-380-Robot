@@ -22,7 +22,7 @@ void setup() {
      Serial.print("\tY : ");
      Serial.print(mpu.getAngleY());
      Serial.print("\tZ : ");
-     Serial.println(mpu.getAngleZ());
+     Serial.println(round(mpu.getAngleZ()));
      timer = millis();
    }
  }
