@@ -1,6 +1,8 @@
-// #include "Wire.h"
-// #include <MPU6050_light.h>
+#include "Wire.h"
+#include <MPU6050_light.h>
 #include "robot_traversal.h"
+
+// MPU6050 mpu(Wire);
 
 
 //Define Ultrasonic Pins
@@ -25,6 +27,8 @@ const int echoPinRight = 5;
 
 const float currentPowerLeft;
 const float currentPowerRight;
+
+const float motorMultiplier = 1.067;
 
 void setup() {
 
@@ -62,17 +66,64 @@ void loop() {
   Serial.println("3!");
 
   Serial.println("RAMP UP START");
-  rampUp(180, 2);
-
-  delay(10000);
-
-
+  rampUp(80, 2);
  
+  bool postFound = false;
+  int numMeasurements = 0;
 
-  // while(read_distance(trigPinLeft, echoPinLeft) > 5 || read_distance(trigPinRight, echoPinRight) > 5){
-  //   Serial.println("Approaching");
-  //   approach(90);
+  while(!postFound){
+
+      Serial.println("POST NOT FOUND");
+      float leftSensor = read_distance(trigPinLeft, echoPinLeft);
+      float rightSensor = read_distance(trigPinRight, echoPinRight);
+      Serial.println(leftSensor);
+      Serial.println(rightSensor);
+      if(abs(leftSensor - rightSensor) < 10){
+        numMeasurements++;
+      }
+
+      if(numMeasurements == 10){
+        postFound = true;
+      }
+
+      delay(50);
+    
+  }
+
+  Serial.println("POST FOUND");
+
+  stop();
+
+  delay(5000);
+
+  rampUp(80, 2);
+
+
+
+
+  // straighten
+
+  // while(1){
+  //   Serial.println(mpu.getAngleZ());
+  //   imu_straighten(90);
   // }
+
+  //approach
+
+  // while(abs(read_distance(trigPinLeft, echoPinLeft) - read_distance(trigPinRight, echoPinRight)) > 5){
+  //   Serial.println("POST NOT FOUND");
+  // };
+
+  Serial.println("STARTING APPROACH");
+
+  while(read_distance(trigPinLeft, echoPinLeft) > 15 && read_distance(trigPinRight, echoPinRight) > 15){
+      approach(80);
+  }
+
+  // motor check
+
+  // delay(10000);
+  
 
   Serial.println("Stopped");
   stop();
@@ -84,21 +135,12 @@ void rampUp(float power, int direction) {
   float rampConst = 1000;
   float powerConst = 255;
   float timeOffset = millis();
-  // Serial.print("Time start = ");
-  // Serial.println(timeOffset);
 
   while((timeOffset + power*rampConst/powerConst) > float (millis()))
   {
     int rampPower = (millis() - timeOffset)*powerConst/rampConst;
     // set motor speed via pwm
     move(rampPower, power, direction);
-    // debug
-    /*Serial.print("Ramp power = ");
-    Serial.println(rampPower);
-    Serial.print("time: ");
-    Serial.println(millis());
-    Serial.println((power*rampConst)/powerConst);*/
-
     delay(150);    
   }
   move(power, 0, 2);
@@ -111,8 +153,6 @@ void rampDown(float power, float initialPower, int direction) {
     float rampConst = 1000;
     float powerConst = 255;
     float timeOffset = millis();
-    // Serial.print("Time start = ");
-    // Serial.println(timeOffset);
     while((timeOffset + (initialPower-power)*rampConst/powerConst) > float (millis()))
     {
       float rampPower = initialPower - (millis() - timeOffset)*powerConst/rampConst;
@@ -121,10 +161,6 @@ void rampDown(float power, float initialPower, int direction) {
 
       // delay(150);    
     }
-    float timeEnd = millis();
-    // Serial.print("hello");
-    // Serial.print("Time end = ");
-    // Serial.println(timeEnd);
 
     if(direction == 3){
       move(power, initialPower, 3);
@@ -164,30 +200,42 @@ void move(float power, float initialPower, int direction) {
   }
   if(direction == 2) {
     analogWrite(pwmLeft, power);
-    analogWrite(pwmRight, (power*(1.045)));
+    analogWrite(pwmRight, power*motorMultiplier);
     // turn on motor and move forward
     digitalWrite(inALeft, LOW);
     digitalWrite(inBLeft, HIGH);
     digitalWrite(inARight, LOW);
     digitalWrite(inBRight, HIGH);
+    // digitalWrite(inALeft, HIGH);
+    // digitalWrite(inBLeft, LOW);
+    // digitalWrite(inARight, HIGH);
+    // digitalWrite(inBRight, LOW);
   }
   if(direction == 3){
     analogWrite(pwmLeft, power);
-    analogWrite(pwmRight, initialPower);
+    analogWrite(pwmRight, initialPower*motorMultiplier);
     // turn on motor and move forward
     digitalWrite(inALeft, LOW);
     digitalWrite(inBLeft, HIGH);
     digitalWrite(inARight, LOW);
     digitalWrite(inBRight, HIGH);
+    // digitalWrite(inALeft, HIGH);
+    // digitalWrite(inBLeft, LOW);
+    // digitalWrite(inARight, HIGH);
+    // digitalWrite(inBRight, LOW);
   }
   if(direction == 4){
     analogWrite(pwmLeft, initialPower);
-    analogWrite(pwmRight, power);
+    analogWrite(pwmRight, power*motorMultiplier);
     // turn on motor and move forward
     digitalWrite(inALeft, LOW);
     digitalWrite(inBLeft, HIGH);
     digitalWrite(inARight, LOW);
     digitalWrite(inBRight, HIGH);
+    // digitalWrite(inALeft, HIGH);
+    // digitalWrite(inBLeft, LOW);
+    // digitalWrite(inARight, HIGH);
+    // digitalWrite(inBRight, LOW);
   }
   
 }
@@ -221,14 +269,43 @@ void move(float power, float initialPower, int direction) {
 //   return averageDistance;
 // }
 
-void approach(float power){
-  float tolerance = 5;
+void imu_straighten(float power){
+  //clockwise = negative, decrease power in LM
+  //counter clockwise = positive, decrease  power in RM
+  float currentAngle = mpu.getAngleZ();
 
-  if(abs(read_distance(trigPinLeft, echoPinLeft) - read_distance(trigPinRight, echoPinRight))  > tolerance){
+  while(abs(currentAngle) > 5){
+
+    if(mpu.getAngleZ() > 0){
+      float multiplier = (100 - currentAngle) / 100;
+      rampDown(multiplier*power, power, 4);
+    } 
+
+    if(mpu.getAngleZ() < 0){
+      float multiplier = (100 - currentAngle) / 100;
+      rampDown(multiplier*power, power, 3);
+    }
+  }
+}
+
+void approach(float power){
+  float tolerance = 10;
+
+  float leftSensor = read_distance(trigPinLeft, echoPinLeft);
+  float rightSensor = read_distance(trigPinRight, echoPinRight);
+
+  //debugging
+  Serial.print("Left Sensor: ");
+  Serial.println(leftSensor);
+  Serial.print("Right Sensor: ");
+  Serial.println(rightSensor);
+
+  if(abs(read_distance_bulk(trigPinLeft, echoPinLeft) - read_distance_bulk(trigPinRight, echoPinRight))  > tolerance){
       while(abs(read_distance(trigPinLeft, echoPinLeft) - read_distance(trigPinRight, echoPinRight))  > tolerance){
         float leftSensor = read_distance(trigPinLeft, echoPinLeft);
         float rightSensor = read_distance(trigPinRight, echoPinRight);
 
+        //debugging
         Serial.print("Left Sensor: ");
         Serial.println(leftSensor);
         Serial.print("Right Sensor: ");

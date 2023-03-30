@@ -14,6 +14,8 @@ const int forward = 1;
 const int backward = 2;
 const int CW = 3;
 const int CCW = 4;
+const int slowLeft = 5;
+const int slowRight = 6;
 
 // FUNCTIONS FROM:  test_motor_controller_VNH5019_and_ramp_functions
 
@@ -68,12 +70,14 @@ void stop(int currentDirection) {
 }
 //98% applied to pwmright at 1% power moving bkwd
 //going down the wall, give 1 to pwmright and give 5 to pwmleft
-void bridgeControl(int power, int direction) {
+void bridgeControl(float power, float initialPower, int direction) {
     // set motor speed via pwm
-    analogWrite(pwmLeft, power/**0.945*/);
-    analogWrite(pwmRight, power);
+    // analogWrite(pwmLeft, power/**0.945*/);
+    // analogWrite(pwmRight, power);
     if (direction == forward) {
         // turn on motor and move forward
+        analogWrite(pwmLeft, power/**0.945*/);
+        analogWrite(pwmRight, power);
         digitalWrite(inALeft, HIGH);
         digitalWrite(inBLeft, LOW);
         digitalWrite(inARight, HIGH);
@@ -81,6 +85,8 @@ void bridgeControl(int power, int direction) {
     }
     if (direction == backward) {
         // turn on motor and move backward
+        analogWrite(pwmLeft, power/**0.945*/);
+        analogWrite(pwmRight, power);
         digitalWrite(inALeft, LOW);
         digitalWrite(inBLeft, HIGH);
         digitalWrite(inARight, LOW);
@@ -88,6 +94,8 @@ void bridgeControl(int power, int direction) {
     }
     if (direction == CCW) {
         // turn on motor and move CCW
+        analogWrite(pwmLeft, power/**0.945*/);
+        analogWrite(pwmRight, power);
         digitalWrite(inALeft, LOW);
         digitalWrite(inBLeft, HIGH);
         digitalWrite(inARight, HIGH);
@@ -95,10 +103,28 @@ void bridgeControl(int power, int direction) {
     }
     if (direction == CW) {
         // turn on motor and move CW
+        analogWrite(pwmLeft, power/**0.945*/);
+        analogWrite(pwmRight, power);
         digitalWrite(inALeft, HIGH);
         digitalWrite(inBLeft, LOW);
         digitalWrite(inARight, LOW);
         digitalWrite(inBRight, HIGH);
+    }
+    if (direction == slowLeft) {
+      analogWrite(pwmLeft, power);
+      analogWrite(pwmRight, initialPower*1.045);
+      digitalWrite(inALeft, HIGH);
+      digitalWrite(inBLeft, LOW);
+      digitalWrite(inARight, HIGH);
+      digitalWrite(inBRight, LOW);
+    }
+    if (direction == slowRight) {
+      analogWrite(pwmLeft, initialPower*1.045);
+      analogWrite(pwmRight, power);
+      digitalWrite(inALeft, HIGH);
+      digitalWrite(inBLeft, LOW);
+      digitalWrite(inARight, HIGH);
+      digitalWrite(inBRight, LOW);
     }
 }
 
@@ -118,7 +144,7 @@ void rotate(float power, int direction, float rampTime, float thetaAngle, bool c
     {
       mpu.update();
       rampUpPower = (float (millis()) - rampUpStartTime)*powerConst/rampTimeConst;    
-      bridgeControl(rampUpPower, direction);
+      bridgeControl(rampUpPower, 0, direction);
       rampUpTime = float (millis()) - rampUpStartTime;
     }
     mpu.update();
@@ -131,7 +157,7 @@ void rotate(float power, int direction, float rampTime, float thetaAngle, bool c
     if((thetaAngle/2 + startAngle) > mpu.getAngleZ()) {
       while(mpu.getAngleZ() < (thetaAngle + startAngle - rampUpAngle)) {
         mpu.update();
-        bridgeControl(power, direction);      
+        bridgeControl(power, 0, direction);      
         Serial.print("CONSTANT SPEED ANGLE: ");
         Serial.println(mpu.getAngleZ());
       }
@@ -152,13 +178,13 @@ void rotate(float power, int direction, float rampTime, float thetaAngle, bool c
       if(rampDownPower < 0) {
         rampDownPower = 0;
       }
-      bridgeControl(rampDownPower, direction);
+      bridgeControl(rampDownPower, 0, direction);
       Serial.print("RAMP DOWN ");
       Serial.println(rampDownPower);
       Serial.print("RAMP DOWN ANGLE: ");
       Serial.println(mpu.getAngleZ());
     }
-    bridgeControl(0, direction);
+    bridgeControl(0, 0, direction);
     float rampDownTime = float (millis()) - rampDownStartTime;
     Serial.print("RAMP DOWN TIME: ");
     Serial.println(rampDownTime);
@@ -170,7 +196,7 @@ void rotate(float power, int direction, float rampTime, float thetaAngle, bool c
     {
       mpu.update();
       rampUpPower = (float (millis()) - rampUpStartTime)*powerConst/rampTimeConst;    
-      bridgeControl(rampUpPower, direction);
+      bridgeControl(rampUpPower, 0, direction);
       rampUpTime = float (millis()) - rampUpStartTime;
     }
     mpu.update();
@@ -183,7 +209,7 @@ void rotate(float power, int direction, float rampTime, float thetaAngle, bool c
     if(((thetaAngle/2 + startAngle)) < mpu.getAngleZ()) {
       while(mpu.getAngleZ() > (thetaAngle + startAngle + rampUpAngle)) {
         mpu.update();
-        bridgeControl(power, direction);      
+        bridgeControl(power, 0, direction);      
         Serial.print("CONSTANT SPEED ANGLE: ");
         Serial.println(mpu.getAngleZ());
       }
@@ -205,13 +231,13 @@ void rotate(float power, int direction, float rampTime, float thetaAngle, bool c
       if(rampDownPower < 0) {
         rampDownPower = 0;
       }
-      bridgeControl(rampDownPower, direction);
+      bridgeControl(rampDownPower, 0, direction);
       Serial.print("RAMP DOWN ");
       Serial.println(rampDownPower);
       Serial.print("RAMP DOWN ANGLE: ");
       Serial.println(mpu.getAngleZ());
     }
-    bridgeControl(0, direction);
+    bridgeControl(0, 0, direction);
     float rampDownTime = float (millis()) - rampDownStartTime;
     Serial.print("RAMP DOWN TIME: ");
     Serial.println(rampDownTime);
@@ -244,7 +270,7 @@ void rampUp(float power, int direction, float rampTime, float angle) {
         //   }
         // }
         // set motor speed via pwm
-        bridgeControl(rampPower, direction);
+        bridgeControl(rampPower, 0, direction);
         // debug
         /*Serial.print("Ramp power = ");
         Serial.println(rampPower);
@@ -278,7 +304,7 @@ void rampUp(float power, int direction, float rampTime, float angle) {
       //   rampDown(0, direction, rampTime, rampPower);  
       // }  
     if (direction == forward || direction == backward) {
-        bridgeControl(power, direction);
+        bridgeControl(power, 0, direction);
     }
     ;
 }
@@ -297,7 +323,7 @@ void rampDown(float power, int direction, float rampTime, float initialPower) {
             Serial.println(mpu.getAngleZ());
             mpu.update();
             // set motor speed via pwm
-            bridgeControl(rampPower, direction);
+            bridgeControl(rampPower, initialPower, direction);
 
             // debug
             /*Serial.print("Ramp power = ");
@@ -307,7 +333,15 @@ void rampDown(float power, int direction, float rampTime, float initialPower) {
             Serial.println((power*rampConst)/powerConst);
             delay(15);  */
         }
-        bridgeControl(power, direction);
+        
+        if(direction == slowLeft){
+          bridgeControl(power, initialPower, direction);
+        }
+        if(direction == slowRight){
+          bridgeControl(power, initialPower, direction);          
+        }
+
+        bridgeControl(power, 0, direction);
     }
 }
 
@@ -344,39 +378,48 @@ double read_distance(int trigPin, int echoPin) {
     long duration;
     double distance, totalDistance, averageDistance;
 
-    // for (int i = 0; i < 20; i++) {
-        digitalWrite(trigPin, LOW);
+    digitalWrite(trigPin, LOW);
 
-        delayMicroseconds(2);
+    delayMicroseconds(2);
 
-        digitalWrite(trigPin, HIGH);
+    digitalWrite(trigPin, HIGH);
 
-        delayMicroseconds(10);
+    delayMicroseconds(10);
 
-        digitalWrite(trigPin, LOW);
+    digitalWrite(trigPin, LOW);
 
-        duration = pulseIn(echoPin, HIGH);
+    duration = pulseIn(echoPin, HIGH);
 
-        distance = (duration * 0.034 / 2);
-
-        // totalDistance += distance;
-    // }
-
-    // averageDistance = totalDistance / 20;
-
-    // if(trigPin == trigPinLeft){
-    //   Serial.print("Left Sensor: ");
-    //   Serial.println(averageDistance);
-
-
-    // }
-
-    // if(trigPin == trigPinRight){
-    //   Serial.print("Right Sensor: ");
-    //   Serial.println(averageDistance);
-    // }
-
-    // return averageDistance;
+    distance = (duration * 0.034 / 2);
 
     return distance;
+}
+
+double read_distance_bulk(int trigPin, int echoPin) {
+    long duration;
+    int numLoops = 10;
+    double distance, totalDistance, averageDistance;
+
+    for(int i = 0; i < numLoops; i++){
+
+    digitalWrite(trigPin, LOW);
+
+    delayMicroseconds(2);
+
+    digitalWrite(trigPin, HIGH);
+
+    delayMicroseconds(10);
+
+    digitalWrite(trigPin, LOW);
+
+    duration = pulseIn(echoPin, HIGH);
+
+    distance = (duration * 0.034 / 2);
+
+    totalDistance += distance;
+    }
+
+    averageDistance = totalDistance / numLoops;
+
+    return averageDistance;;
 }
