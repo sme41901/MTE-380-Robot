@@ -3,20 +3,6 @@
 #include <MPU6050_light.h>
 MPU6050 mpu(Wire);
 
-//define states and working functions
-//motor states
-// State STOP = State(stop);
-// State WALL_APPROACH = State(wall_approach);
-// State WALL_ENGAGE = State(wall_engage);
-// State WALL_UP = State(wall_up);
-// State WALL_DOWN = State(wall_down);
-// State WALL_DISENGAGE = State(wall_disengage);
-// State BASE_SEARCH = State(base_search);
-// State BASE_FOUND = State(base_found);
-
-//initiate state machine
-// FSM Motor = FSM(STOP);
-
 //Define Ultrasonic Pins
 const int echoPinLeft = 5;
 const int trigPinLeft = 6;
@@ -87,232 +73,27 @@ void loop(){
 
     inState = true;  
 
-    // if(Motor.isInState(STOP)){    
-    //   Motor.transitionTo(WALL_APPROACH);
-    // } else if(Motor.isInState(WALL_APPROACH)){
-    //   Motor.transitionTo(WALL_ENGAGE);
-    // } else if(Motor.isInState(WALL_ENGAGE)){    
-    //   Motor.transitionTo(WALL_UP);
-    // } else if(Motor.isInState(WALL_UP)){     
-    //   Motor.transitionTo(WALL_DOWN);   
-    // } else if(Motor.isInState(WALL_DOWN){   
-    //   Motor.transitionTo(BASE_SEARCH);
-    // } 
-    // if(currentState == "WALL_APPROACH"){     
-    //   wall_engage();
-    // }
-    if(currentState == "BASE_SEARCH"){     
-      // Motor.transitionTo(BASE_FOUND);
+    if(currentState == "WALL_APPROACH"){     
+      wall_approach();
+    } else if(currentState == "WALL_ASCEND"){
+      wall_up();
+    } else if(currentState == "WALL_UPHILL"){
+      wall_down();
+    } else if(currentState == "WALL_APEX"){
+      wall_apex();
+    } else if(currentState == "WALL_DESCEND"){
+      wall_descend();
+    } else if(currentState == "WALL_DISENGAGE"){ // when US reads less than 5
+      wall_disengage();
+    } else if(currentState == "BASE_SEARCH"){ //when IMU is 0 horizotal
       base_search();
+    } else if(currentState == "BASE_APPROACH"){
+      base_approach();
     }
 
-
-
   }
 }
 
-double read_distance(int trigPin, int echoPin){
-  long duration;
-  double distance, totalDistance, averageDistance;  
-
-  for(int i = 0; i < 100; i++){
-    digitalWrite(trigPin, LOW);
-
-    delayMicroseconds(2);
-
-    digitalWrite(trigPin, HIGH);
-
-    delayMicroseconds(10);
-
-    digitalWrite(trigPin, LOW);
-
-    duration = pulseIn(echoPin, HIGH);
-
-    distance = (duration * 0.034 / 2);  
-
-    totalDistance += distance;
-  }
-
-  averageDistance = totalDistance / 100;
-
-  return averageDistance;
-}
-
-double average_distance(){
-  return 1.0247 * ( read_distance(trigPinLeft, echoPinLeft) + read_distance(trigPinRight, echoPinRight) ) / 2;
-}
-
-void move_forward(int power){
-    analogWrite(pwmLeft, power);
-    analogWrite(pwmRight, power);
-    digitalWrite(inALeft, HIGH);
-    digitalWrite(inBLeft, LOW);
-    digitalWrite(inARight, HIGH);
-    digitalWrite(inBRight, LOW);
-}
-
-void move_backward(int power){
-    analogWrite(pwmLeft, power);
-    analogWrite(pwmRight, power);
-    digitalWrite(inALeft, LOW);
-    digitalWrite(inBLeft, HIGH);
-    digitalWrite(inARight, LOW);
-    digitalWrite(inBRight, HIGH);
-}
-
-void rotate_clockwise(){
-    analogWrite(pwmLeft, 50);
-    analogWrite(pwmRight, 50);
-    digitalWrite(inALeft, HIGH);
-    digitalWrite(inBLeft, LOW);
-    digitalWrite(inARight, HIGH);
-    digitalWrite(inBRight, LOW);
-}
-
-void rotate_counterclockwise(){
-    analogWrite(pwmLeft, 50);
-    analogWrite(pwmRight, 50);
-    digitalWrite(inALeft, LOW);
-    digitalWrite(inBLeft, HIGH);
-    digitalWrite(inARight, LOW);
-    digitalWrite(inBRight, HIGH);
-}
-
-void motor_stop(){
-    analogWrite(pwmLeft, 0);
-    analogWrite(pwmRight, 0);
-    digitalWrite(inALeft, LOW);
-    digitalWrite(inBLeft, LOW);
-    digitalWrite(inARight, LOW);
-    digitalWrite(inBRight, LOW);
-
-}
-
-
-void rampUp(float power, int direction) {
-  float rampConst = 1000;
-  float powerConst = 255;
-  float timeOffset = millis();
-  Serial.print("Time offset = ");
-  Serial.println(timeOffset);
-  while((timeOffset + power*rampConst/powerConst) > float (millis()))
-  {
-    int rampPower = (millis() - timeOffset)*powerConst/rampConst;
-    // set motor speed via pwm
-    move(rampPower, direction);
-    // debug
-    /*Serial.print("Ramp power = ");
-    Serial.println(rampPower);
-    Serial.print("time: ");
-    Serial.println(millis());
-    Serial.println((power*rampConst)/powerConst);*/
-
-    delay(150);    
-  }
-  move(power, 2);
-}
-
-void rampDown(float power, float initialPower, int direction) {
-  if(initialPower > power) {
-    float rampConst = 6000;
-    float powerConst = 255;
-    float timeOffset = millis();
-    Serial.print("Time offset = ");
-    Serial.println(timeOffset);
-    while((timeOffset + (initialPower-power)*rampConst/powerConst) > float (millis()))
-    {
-      int rampPower = initialPower - (millis() - timeOffset)*powerConst/rampConst;
-      // set motor speed via pwm
-      move(rampPower, direction);
-      
-      // debug
-      /*Serial.print("Ramp power = ");
-      Serial.println(rampPower);
-      Serial.print("time: ");
-      Serial.println(millis());
-      Serial.println((power*rampConst)/powerConst);*/
-
-      delay(150);    
-    }
-    move(power, 2);
-  }
-}
-
-void move(int power, int direction) {
-  // set motor speed via pwm
-  analogWrite(pwmLeft, power);
-  analogWrite(pwmRight, power);
-  // direction = 0 go forward
-  if(direction == 0) {
-  // turn on motor and move forward
-    digitalWrite(inALeft, LOW);
-    digitalWrite(inBLeft, LOW);
-    digitalWrite(inARight, LOW);
-    digitalWrite(inBRight, LOW);
-  }
-  if(direction == 1) {
-  // turn on motor and move backward
-    digitalWrite(inALeft, LOW);
-    digitalWrite(inBLeft, HIGH);
-    digitalWrite(inARight, LOW);
-    digitalWrite(inBRight, HIGH);
-  }
-  if(direction == 2) {
-    // turn on motor and move forward
-    digitalWrite(inALeft, HIGH);
-    digitalWrite(inBLeft, LOW);
-    digitalWrite(inARight, HIGH);
-    digitalWrite(inBRight, LOW);
-  }
-  
-}
-
-void stop() {
-  // set motor speed via pwm
-  move(0, 0);
-}
-
-void straighten(){
-  if(read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) > (1 + 0.1) || read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) < (1 - 0.1) || abs(read_distance(trigPinLeft, echoPinLeft) - read_distance(trigPinRight, echoPinRight)) > 5){
-      while(read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) > (1 + 0.1) || read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight) < (1 - 0.1)){
-        if (read_distance(trigPinLeft, echoPinLeft) < read_distance(trigPinRight, echoPinRight)){
-          // decrease power in RM
-          int multiplier = (read_distance(trigPinLeft, echoPinLeft) / read_distance(trigPinRight, echoPinRight)) * 2;
-          analogWrite(pwmLeft, 100);
-          analogWrite(pwmRight, (multiplier*100));
-        }
-        else {
-          // decrease power in LM
-          int multiplier = (read_distance(trigPinRight, echoPinRight) / read_distance(trigPinLeft, echoPinLeft)) * 2;
-          analogWrite(pwmLeft, (multiplier*100));
-          analogWrite(pwmRight, 100);
-        }
-
-      }
-  }
-
-  move_forward(50);
-}
-
-void imu_straighten(){
-  //clockwise = negative, decrease power in LM
-  //counter clockwise = positive, decrease  power in RM
-  while(1){
-    if(mpu.getAngleZ() > 0){
-      int multiplier = (100 - mpu.getAngleZ()) / 100;
-      analogWrite(pwmLeft, 100);
-      analogWrite(pwmRight, (multiplier*100));
-    } 
-
-    if(mpu.getAngleZ() < 0){
-      int multiplier = (100 - mpu.getAngleZ()) / 100;
-      analogWrite(pwmLeft, (multiplier*100));
-       analogWrite(pwmRight, 100); 
-    }
-    
-  }
-
-}
 
 void reset_imu(){
     Serial.println(F("Resetting IMU"));

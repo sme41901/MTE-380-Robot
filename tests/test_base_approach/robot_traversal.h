@@ -16,6 +16,7 @@ const int CW = 3;
 const int CCW = 4;
 const int slowLeft = 5;
 const int slowRight = 6;
+const float motorMultiplier = 1.067;
 
 // FUNCTIONS FROM:  test_motor_controller_VNH5019_and_ramp_functions
 
@@ -74,10 +75,12 @@ void bridgeControl(float power, float initialPower, int direction) {
     // set motor speed via pwm
     // analogWrite(pwmLeft, power/**0.945*/);
     // analogWrite(pwmRight, power);
-    if (direction == forward) {
-        // turn on motor and move forward
+    if(direction == forward || backward || CCW || CW){
         analogWrite(pwmLeft, power/**0.945*/);
         analogWrite(pwmRight, power);
+    }
+    if (direction == forward) {
+        // turn on motor and move forward
         digitalWrite(inALeft, HIGH);
         digitalWrite(inBLeft, LOW);
         digitalWrite(inARight, HIGH);
@@ -85,8 +88,6 @@ void bridgeControl(float power, float initialPower, int direction) {
     }
     if (direction == backward) {
         // turn on motor and move backward
-        analogWrite(pwmLeft, power/**0.945*/);
-        analogWrite(pwmRight, power);
         digitalWrite(inALeft, LOW);
         digitalWrite(inBLeft, HIGH);
         digitalWrite(inARight, LOW);
@@ -94,8 +95,6 @@ void bridgeControl(float power, float initialPower, int direction) {
     }
     if (direction == CCW) {
         // turn on motor and move CCW
-        analogWrite(pwmLeft, power/**0.945*/);
-        analogWrite(pwmRight, power);
         digitalWrite(inALeft, LOW);
         digitalWrite(inBLeft, HIGH);
         digitalWrite(inARight, HIGH);
@@ -103,8 +102,6 @@ void bridgeControl(float power, float initialPower, int direction) {
     }
     if (direction == CW) {
         // turn on motor and move CW
-        analogWrite(pwmLeft, power/**0.945*/);
-        analogWrite(pwmRight, power);
         digitalWrite(inALeft, HIGH);
         digitalWrite(inBLeft, LOW);
         digitalWrite(inARight, LOW);
@@ -112,15 +109,15 @@ void bridgeControl(float power, float initialPower, int direction) {
     }
     if (direction == slowLeft) {
       analogWrite(pwmLeft, power);
-      analogWrite(pwmRight, initialPower*1.045);
+      analogWrite(pwmRight, initialPower*motorMultiplier);
       digitalWrite(inALeft, HIGH);
       digitalWrite(inBLeft, LOW);
       digitalWrite(inARight, HIGH);
       digitalWrite(inBRight, LOW);
     }
     if (direction == slowRight) {
-      analogWrite(pwmLeft, initialPower*1.045);
-      analogWrite(pwmRight, power);
+      analogWrite(pwmLeft, initialPower);
+      analogWrite(pwmRight, power*motorMultiplier);
       digitalWrite(inALeft, HIGH);
       digitalWrite(inBLeft, LOW);
       digitalWrite(inARight, HIGH);
@@ -270,7 +267,7 @@ void rampUp(float power, int direction, float rampTime, float angle) {
         //   }
         // }
         // set motor speed via pwm
-        bridgeControl(rampPower, 0, direction);
+        bridgeControl(rampPower, power, direction);
         // debug
         /*Serial.print("Ramp power = ");
         Serial.println(rampPower);
@@ -334,14 +331,7 @@ void rampDown(float power, int direction, float rampTime, float initialPower) {
             delay(15);  */
         }
         
-        if(direction == slowLeft){
-          bridgeControl(power, initialPower, direction);
-        }
-        if(direction == slowRight){
-          bridgeControl(power, initialPower, direction);          
-        }
-
-        bridgeControl(power, 0, direction);
+        bridgeControl(power, initialPower, direction);
     }
 }
 
