@@ -104,11 +104,7 @@ void reset_imu(){
 
 
 void wall_approach(){
-  move_forward(20);
-  while(average_distance() < 50){
-  }
 
-  inState = false;
 }
 
 void wall_engage(){
@@ -390,14 +386,56 @@ void base_search(){ // flip
 
 // }
 
-void base_found(){
-  move_backward(50);
-  
-  while(average_distance() > 5){
-    // straighten();
+void base_approach(){
+  Serial.println("1....2..");
+  delay(3000);
+  Serial.println("3!");
+
+  Serial.println("RAMP UP START");
+  // rampUp(80, 2);
+  rampUp(80, forward, 1000, 0); //new 
+ 
+  bool postFound = false;
+  int numMeasurements = 0;
+
+  while(!postFound){
+    
+      Serial.println("POST NOT FOUND");
+      float leftSensor = read_distance(trigPinLeft, echoPinLeft);
+      float rightSensor = read_distance(trigPinRight, echoPinRight);
+      Serial.println(leftSensor);
+      Serial.println(rightSensor);
+      if(abs(leftSensor - rightSensor) < 10){
+        numMeasurements++;
+      }
+
+      if(numMeasurements == 10){
+        postFound = true;
+      }
+
+      delay(50);
+
   }
 
-  motor_stop();
+  Serial.println("POST FOUND");
+
+  // stop();
+  stop(forward); //new
+
+  delay(5000);
+
+  // rampUp(80, 2);
+  rampUp(80, forward, 1000, 0); //new 
+
+  Serial.println("STARTING APPROACH");
+
+  while(read_distance(trigPinLeft, echoPinLeft) > 15 || read_distance(trigPinRight, echoPinRight) > 15){
+      approach(80);
+  }
+  
+  // stop();
+  stop(forward); //new
+  Serial.println("Stopped");
 }
 
 

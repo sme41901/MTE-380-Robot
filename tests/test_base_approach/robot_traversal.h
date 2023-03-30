@@ -4,19 +4,33 @@
 MPU6050 mpu(Wire);
 
 // DEFINTIONS 
-const int inALeft = 2;
-const int inBLeft = 4;
+// const int inALeft = 2;
+// const int inBLeft = 4;
+// const int pwmLeft = 3;
+// const int inARight = 13;
+// const int inBRight = 12;
+// const int pwmRight = 11;
+
+const int trigPinLeft = 10;
+const int echoPinLeft = 9;
+const int trigPinRight = 6;
+const int echoPinRight = 5;
+
+const int inALeft = 4;
+const int inBLeft = 2;
 const int pwmLeft = 3;
-const int inARight = 13;
-const int inBRight = 12;
+const int inARight = 12;
+const int inBRight = 13;
 const int pwmRight = 11;
 const int forward = 1;
 const int backward = 2;
 const int CW = 3;
 const int CCW = 4;
-const int slowLeft = 5;
-const int slowRight = 6;
-const float motorMultiplier = 1.067;
+const int adjustLeft = 5;
+const int adjustRight = 6;
+const int slowLeft = 7;
+const int slowRight = 8;
+const float motorMultiplier = 1.167;
 
 // FUNCTIONS FROM:  test_motor_controller_VNH5019_and_ramp_functions
 
@@ -316,10 +330,14 @@ void rampDown(float power, int direction, float rampTime, float initialPower) {
         while ((timeOffset + (initialPower - power) * rampConst / powerConst) > float(millis()))
         {
             int rampPower = initialPower - (millis() - timeOffset) * powerConst / rampConst;
-            Serial.print("Current Angle: ");
-            Serial.println(mpu.getAngleZ());
-            mpu.update();
+            // Serial.print("Current Angle: ");
+            // Serial.println(mpu.getAngleZ());
+            // mpu.update();
             // set motor speed via pwm
+            Serial.print("UPDATED POWER: ");
+            Serial.println(rampPower);
+            Serial.print("OLD POWER: ");
+            Serial.println(initialPower);
             bridgeControl(rampPower, initialPower, direction);
 
             // debug
@@ -331,6 +349,7 @@ void rampDown(float power, int direction, float rampTime, float initialPower) {
             delay(15);  */
         }
         
+        Serial.println("DONE POWERING");
         bridgeControl(power, initialPower, direction);
     }
 }
@@ -345,10 +364,41 @@ void move(float power, int direction, float rampTime, float slowdown, unsigned l
     //   digitalWrite(inARight, LOW);
     //   digitalWrite(inBRight, LOW);
     // }
+    mpu.update();
+    int startAngle = round(mpu.getAngleZ());
+    Serial.print("START ANGLE : ");
+    Serial.println(round(mpu.getAngleZ()));  
     if (direction == forward) {
         // turn on motor and move forward
+        float multiplier = 10;
         rampUp(power, forward, rampTime, NULL);
-        delay(duration);
+        unsigned long startTime = millis();
+        while((startTime + duration) > millis()) {
+          mpu.update();        
+          Serial.print("CURRENT ANGLE : ");
+          Serial.println(round(mpu.getAngleZ()));  
+          // if we stray by strayDegree, adjust the respective motor
+          if(round(mpu.getAngleZ()) < startAngle)
+          {
+            while(round(mpu.getAngleZ()) < startAngle)
+            {
+              mpu.update();       
+              bridgeControl(power + multiplier*round(mpu.getAngleZ()), 0, adjustLeft);
+              Serial.println("ADJUST LEFT");                
+            }
+            bridgeControl(power, 0, adjustLeft);
+          }       
+          if(round(mpu.getAngleZ()) > startAngle)
+          {
+            while(round(mpu.getAngleZ()) > startAngle)
+            {
+              mpu.update(); 
+              bridgeControl(power-multiplier*round(mpu.getAngleZ()), 0, adjustRight);
+              Serial.println("ADJUST RIGHT");                
+            }
+            bridgeControl(power, 0, adjustRight);
+          }                
+        }        
         if (slowdown > -1) {
             rampDown(slowdown, forward, rampTime, power);
         }
@@ -413,3 +463,102 @@ double read_distance_bulk(int trigPin, int echoPin) {
 
     return averageDistance;;
 }
+
+void approach_straighten(float power){
+  float tolerance = 10;
+
+  float leftSensor = read_distance(trigPinLeft, echoPinLeft);
+  float rightSensor = read_distance(trigPinRight, echoPinRight);
+
+  //debugging
+  Serial.print("Left Sensor: ");
+  Serial.println(leftSensor);
+  Serial.print("Right Sensor: ");
+  Serial.println(rightSensor);
+
+  if(abs(read_distance(trigPinLeft, echoPinLeft) - read_distance(trigPinRight, echoPinRight))  > tolerance){
+      while(abs(read_distance(trigPinLeft, echoPinLeft) - read_distance(trigPinRight, echoPinRight))  > tolerance){
+        float leftSensor = read_distance(trigPinLeft, echoPinLeft);
+        float rightSensor = read_distance(trigPinRight, echoPinRight);
+
+        //debugging
+        Serial.print("Left Sensor: ");
+        Serial.println(leftSensor);
+        Serial.print("Right Sensor: ");
+        Serial.println(rightSensor);
+
+        if (leftSensor < rightSensor){
+          // decrease power in LM
+          float multiplier = (leftSensor / rightSensor);
+          // rampDown(power, 3);
+          rampDown(multiplier*power, slowLeft, 1000, power); //new
+        } else if (rightSensor < leftSensor) {
+          // decrease power in RM
+          float multiplier = (rightSensor / leftSensor);
+          // rampDown(multiplier*power, power, 4);
+          rampDown(multiplier*power, slowRight, 1000, power); //new
+        }
+
+      }
+
+      rampUp(power, forward, 1000, 0);
+  }
+
+}
+
+void base_approach(){
+  
+  Serial.println("1....2..");
+  delay(3000);
+  Serial.println("3!");
+
+  Serial.println("RAMP UP START");
+  // rampUp(80, 2);
+  rampUp(80, forward, 1000, 0); //new 
+ 
+  bool postFound = false;
+  int numMeasurements = 0;
+
+  while(!postFound){
+    
+      Serial.println("POST NOT FOUND");
+      float leftSensor = read_distance(trigPinLeft, echoPinLeft);
+      float rightSensor = read_distance(trigPinRight, echoPinRight);
+      Serial.println(leftSensor);
+      Serial.println(rightSensor);
+      if(abs(leftSensor - rightSensor) < 10){
+        numMeasurements++;
+      }
+
+      if(numMeasurements == 10){
+        postFound = true;
+      }
+
+      delay(50);
+
+  }
+
+  Serial.println("POST FOUND");
+
+  // stop();
+  stop(forward); //new
+
+  delay(5000);
+
+  // rampUp(80, 2);
+  rampUp(80, forward, 1000, 0); //new 
+
+  Serial.println("STARTING APPROACH");
+
+  while(read_distance(trigPinLeft, echoPinLeft) > 15 || read_distance(trigPinRight, echoPinRight) > 15){
+      approach_straighten(80);
+  }
+  
+  // stop();
+  stop(forward); //new
+  Serial.println("Stopped");
+
+}
+
+
+
