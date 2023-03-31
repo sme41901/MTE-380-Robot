@@ -4,7 +4,6 @@
 
 
 void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
   // put your setup code here, to run once:
 //Initialize Left Motor
   pinMode(inALeft, OUTPUT);
@@ -21,6 +20,14 @@ void setup() {
   digitalWrite(inBLeft, LOW);
   digitalWrite(inARight, LOW);
   digitalWrite(inBRight, LOW);
+
+  //sensors
+  pinMode(trigPinLeft, OUTPUT); // Sets the trigPin as an Output
+  pinMode(echoPinLeft, INPUT); // Sets the echoPin as an Input
+  pinMode(trigPinRight, OUTPUT); // Sets the trigPin as an Output
+  pinMode(echoPinRight, INPUT); // Sets the echoPin as an Input
+
+  pinMode(LED_BUILTIN, OUTPUT);
   
   Serial.begin(115200);
   Wire.begin();
@@ -47,16 +54,59 @@ void loop() {
   // for 90 spin
   // high power: 0.5 and 0.811
   
-  delay(2000);
-  rotate(255*0.5, CCW, 1000, 90*0.811, false);
-  mpu.update();
-  delay(5000);
-  mpu.update();
-  rotate(255*0.2, CW, 1000, -180*0.9065, true);
-  mpu.update();
-  delay(5000);
+  // delay(2000);
   // rotate(255*0.5, CCW, 1000, 90*0.811, false);
   // mpu.update();
+  // delay(5000);
+  // mpu.update();
+  // rotate(255*0.2, CW, 1000, -180*0.9065, true);
+  // mpu.update();
+  // delay(5000);
+  // rotate(255*0.5, CCW, 1000, 90*0.811, false);
+  // mpu.update();
+
+  //test US
+  // Serial.print("LEFT US: ");
+  // Serial.println(readDistance(trigPinLeft, echoPinLeft));
+  // Serial.print("RIGHT US: ");
+  // Serial.println(readDistance(trigPinRight, echoPinRight));
+
+  //search
+  delay(2000);
+  int i = 1;
+  resetCurrentStage();
+  // yDistanceFromWallToBoundary = (readDistance(trigPinLeft, echoPinLeft) + readDistance(trigPinRight, echoPinRight)) / 2;
+  // Serial.print("y dist: ");
+  // Serial.println(yDistanceFromWallToBoundary);
+  // else { 
+  while(currentStage < numberOfStages /*&& !postFound*/) {    
+    if(currentStage > 0)
+    {
+      i = 2;
+    }
+    yDistanceFromWallToBoundary = (readDistance(trigPinLeft, echoPinLeft) + readDistance(trigPinRight, echoPinRight)) / 2;
+    moveForwardUS(yDistanceFromWallToBoundary, yDistanceFromWallToBoundary - i*searchDistanceIncrement);     
+    rotate(255*0.12, CW, 1000, -90*0.925, false);
+    Serial.print("CURRENT ANGLE : ");
+    Serial.println(round(mpu.getAngleZ()));     
+    mpu.update();
+    delay(1000);
+    xDistanceFromWallToBoundary = (readDistance(trigPinLeft, echoPinLeft) + readDistance(trigPinRight, echoPinRight)) / 2;    
+    mpu.update();
+    rotate(255*0.12, CCW, 1000, 180*0.945, false);
+    mpu.update();
+        Serial.print("CURRENT ANGLE : ");
+    Serial.println(round(mpu.getAngleZ())); 
+    delay(1000);
+    //if(!postFound)
+    rotate(255*0.12, CW, 1000, -90*0.925, false);
+    mpu.update();    
+        Serial.print("CURRENT ANGLE : ");
+    Serial.println(round(mpu.getAngleZ())); 
+    increaseCurrentStage();  
+      // only move up if we are not on the final stage    
+    //}
+  }
 //clean and disengage
 // delay(2000);
 // mpu.update();

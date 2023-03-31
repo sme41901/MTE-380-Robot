@@ -577,8 +577,8 @@ void move(float power, int direction, float rampTime, float slowdown, unsigned l
     // }
     mpu.update();
     int startAngle = round(mpu.getAngleZ());
-    Serial.print("START ANGLE : ");
-    Serial.println(round(mpu.getAngleZ()));  
+    // Serial.print("START ANGLE : ");
+    // Serial.println(round(mpu.getAngleZ()));  
     if (direction == forward) {
         // turn on motor and move forward
         float multiplier = 10;
@@ -586,8 +586,8 @@ void move(float power, int direction, float rampTime, float slowdown, unsigned l
         unsigned long startTime = millis();
         while((startTime + duration) > millis()) {
           mpu.update();        
-          Serial.print("CURRENT ANGLE : ");
-          Serial.println(round(mpu.getAngleZ()));  
+          // Serial.print("CURRENT ANGLE : ");
+          // Serial.println(round(mpu.getAngleZ()));  
           // if we stray by strayDegree, adjust the respective motor
           if(round(mpu.getAngleZ()) < startAngle)
           {
@@ -595,7 +595,7 @@ void move(float power, int direction, float rampTime, float slowdown, unsigned l
             {
               mpu.update();       
               bridgeControl(power + multiplier*round(mpu.getAngleZ()), adjustLeft);
-              Serial.println("ADJUST LEFT");                
+              // Serial.println("ADJUST LEFT");                
             }
             bridgeControl(power, adjustLeft);
           }       
@@ -605,7 +605,7 @@ void move(float power, int direction, float rampTime, float slowdown, unsigned l
             {
               mpu.update(); 
               bridgeControl(power-multiplier*round(mpu.getAngleZ()), adjustRight);
-              Serial.println("ADJUST RIGHT");                
+              // Serial.println("ADJUST RIGHT");                
             }
             bridgeControl(power, adjustRight);
           }                

@@ -1,55 +1,16 @@
 // #include <FiniteStateMachine.h>
-#include "Wire.h"
-#include <MPU6050_light.h>
-MPU6050 mpu(Wire);
-
-//Define Ultrasonic Pins
-const int echoPinLeft = 5;
-const int trigPinLeft = 6;
-const int trigPinRight = 9;
-const int echoPinRight = 10;
-
-//Define Motor Pins
-const int inALeft = 2;
-const int inBLeft = 4;
-const int pwmLeft = 3;
-const int inARight = 13;
-const int inBRight = 12;
-const int pwmRight = 11;
+#include "robot_traversal.h"
 
 //constants
 const int wallToRamp = 151;
-const int courseWidth = 248;
 const int courseHeight = 220;
 const float halfWallToRamp = 75.5;
 const float offset = 14.5;
-const String currentState = "BASE_SEARCH";
-
-bool inState;
+const String currentState = "WALL_APPROACH";
 
 void setup() {
-  inState = false;
 
-  Serial.begin(9600);
-  Wire.begin();
-  byte status = mpu.begin();
-  Serial.print(F("MPU6050 status: "));
-  Serial.println(status);
-  while (status != 0) { } // stop everything if could not connect to MPU6050
-  Serial.println(F("Calculating offsets, do not move MPU6050"));
-  delay(1000);
-  mpu.calcOffsets(); // gyro and accelero
-  Serial.println("Done!\n");
-
-//Initialize Left Ultrasonic Sensor
-  pinMode(trigPinLeft, OUTPUT); 
-  pinMode(echoPinLeft, INPUT); 
-
-//Initialize Right Ultrasonic Sensor
-  pinMode(trigPinRight, OUTPUT); 
-  pinMode(echoPinRight, INPUT);
-
-//Initialize Left Motor
+  //Initialize Left Motor
   pinMode(inALeft, OUTPUT);
   pinMode(inBLeft, OUTPUT);
   pinMode(pwmLeft, OUTPUT);
@@ -64,213 +25,288 @@ void setup() {
   digitalWrite(inBLeft, LOW);
   digitalWrite(inARight, LOW);
   digitalWrite(inBRight, LOW);
+
+  //sensors
+  pinMode(trigPinLeft, OUTPUT); // Sets the trigPin as an Output
+  pinMode(echoPinLeft, INPUT); // Sets the echoPin as an Input
+  pinMode(trigPinRight, OUTPUT); // Sets the trigPin as an Output
+  pinMode(echoPinRight, INPUT); // Sets the echoPin as an Input
+
+  Serial.begin(115200);
+  Wire.begin();
+  byte status = mpu.begin();
+  Serial.print(F("MPU6050 status: "));
+  Serial.println(status);
+  while (status != 0) { } // stop everything if could not connect to MPU6050
+  Serial.println(F("Calculating offsets, do not move MPU6050"));
+  delay(1000);
+  mpu.calcOffsets(); // gyro and accelero
+  Serial.println("Done!\n");
+}
+
+void wall_approach(){
+  Serial.println("IN WALL APPROACH");
+  Serial.println("=========================");
+  Serial.println(mpu.getAngleY());
+  Serial.println("=========================");
+  // while(mpu.getAngleY() > (-84.91 + 10) || mpu.getAngleY() < (-84.91 - 10) ){
+  while(mpu.getAngleY() > -84.91 ){
+    Serial.println(mpu.getAngleY());
+    mpu.update();
+    move(255, forward, 1000, 0, 6000);
+    Serial.println(currentState);
+  }
+  Serial.println("OUT WALL APPROACH");
+  currentState = "WALL_ASCEND";
+}
+
+void wall_climb(){ 
+  // while(mpu.getAngleY() < (-34.84 + 10) || mpu.getAngleY() > (-34.84 - 10) )
+  while(mpu.getAngleY() < -34.84  ){
+    
+    mpu.update();
+    move(255*0.8, forward, 1000, 0, 3000);
+    Serial.println(currentState);
+  }
+  currentState = "WALL_UPHILL";
+}
+
+void wall_uphill(){ 
+  while(mpu.getAngleY() < 33.86){
+    mpu.update();
+    move(255*0.4, forward, 1000, 0, 3000);
+    Serial.println(currentState);
+  }
+  currentState = "WALL_DOWNHILL";
 }
 
 
-void loop(){
+void wall_downhill(){
+  while(mpu.getAngleY() < 84.91){
+        mpu.update();
+    move(255*0.4, forward, 1000, 0, 6000);
+    Serial.println(currentState);
+  }
+  currentState = "WALL_DESCEND";
+}
 
-  if(inState == false){
+void wall_descend(){
+  while(readDistance(trigPinLeft, echoPinLeft) < 10 || readDistance(trigPinRight, echoPinRight) < 10)
+  {
+    mpu.update();
+    move(255*0.01, backward, 1000, 0, 6000);
+    Serial.println(currentState);
+  }  
+  currentState = "WALL_DISENGAGE";
+}
 
-    inState = true;  
+void wall_disengage(){
+  while(mpu.getAngleY() > 0 )
+  {
+        mpu.update();
+    move(255*0.01, backward, 1000, 0, 6000);
+    Serial.println(currentState);
+  }  
+  currentState = "BASE_SEARCH";
+}
 
+void base_search(){
+  delay(2000);
+  int i = 1;
+  resetCurrentStage();
+  // yDistanceFromWallToBoundary = (readDistance(trigPinLeft, echoPinLeft) + readDistance(trigPinRight, echoPinRight)) / 2;
+  // Serial.print("y dist: ");
+  // Serial.println(yDistanceFromWallToBoundary);
+  // else { 
+  while(currentStage < numberOfStages /*&& !postFound*/) {   
+    
+    Serial.println(currentState); 
+    if(currentStage > 0)
+    {
+      i = 2;
+    }
+    yDistanceFromWallToBoundary = (readDistance(trigPinLeft, echoPinLeft) + readDistance(trigPinRight, echoPinRight)) / 2;
+    moveForwardUS(yDistanceFromWallToBoundary, yDistanceFromWallToBoundary - i*searchDistanceIncrement);     
+    rotate(255*0.12, CW, 1000, -90*0.925, false);
+    Serial.print("CURRENT ANGLE : ");
+    Serial.println(round(mpu.getAngleZ()));     
+    mpu.update();
+    delay(1000);
+    xDistanceFromWallToBoundary = (readDistance(trigPinLeft, echoPinLeft) + readDistance(trigPinRight, echoPinRight)) / 2;    
+    mpu.update();
+    rotate(255*0.12, CCW, 1000, 180*0.945, false);
+    mpu.update();
+        Serial.print("CURRENT ANGLE : ");
+    Serial.println(round(mpu.getAngleZ())); 
+    delay(1000);
+    //if(!postFound)
+    rotate(255*0.12, CW, 1000, -90*0.925, false);
+    mpu.update();    
+        Serial.print("CURRENT ANGLE : ");
+    Serial.println(round(mpu.getAngleZ())); 
+    increaseCurrentStage();  
+      // only move up if we are not on the final stage    
+    //}
+  }
+  currentState = "BASE_FOUND";
+}
+
+void loop(){ 
+    mpu.update();
     if(currentState == "WALL_APPROACH"){     
       wall_approach();
     } else if(currentState == "WALL_ASCEND"){
-      wall_up();
+      wall_climb();
     } else if(currentState == "WALL_UPHILL"){
-      wall_down();
-    } else if(currentState == "WALL_APEX"){
-      wall_apex();
+      wall_uphill();
+    } else if(currentState == "WALL_DOWNHILL"){
+      wall_downhill();
     } else if(currentState == "WALL_DESCEND"){
       wall_descend();
     } else if(currentState == "WALL_DISENGAGE"){ // when US reads less than 5
       wall_disengage();
     } else if(currentState == "BASE_SEARCH"){ //when IMU is 0 horizotal
       base_search();
-    } else if(currentState == "BASE_APPROACH"){
-      base_approach();
+    } else if(currentState == "BASE_FOUND"){
+      stop(forward);
     }
-
-  }
-}
-
-
-void reset_imu(){
-    Serial.println(F("Resetting IMU"));
-    delay(1000);
-    mpu.calcOffsets();
-    Serial.println("IMU Reset");
-}
-
-
-void wall_approach(){
-
-}
-
-void wall_engage(){
-  move_forward(50);
-  while(average_distance()  > 5){
-    straighten();
   }
 
-  inState = false;
-}
 
 
-void wall_up(){ 
-  move_forward(100);
-  while(average_distance() < 20){
-    // straighten();
-  }
+// void reset_imu(){
+//     Serial.println(F("Resetting IMU"));
+//     delay(1000);
+//     mpu.calcOffsets();
+//     Serial.println("IMU Reset");
+// }
 
-  move_forward(50);
-  while(average_distance() < 20){
-    // straighten();
-  }
+// void base_search(){ // flip
 
-  inState = false;
-}
+//   move_backward(10);
 
+//   while(average_distance() > (courseHeight -  (wallToRamp / 2))){
+//   }
 
-void wall_down(){
-  move_forward(50); 
-  while(average_distance() > 5){
+//   motor_stop();
 
-    // if(/*velocity > 2 && acceleration > 0*/){
-    // //MOTOR LEFT REDUCE TORQUE
-    // //MOTOR RIGHT REDUCE TORQUE
-    // }
-  }
+//   float expectedX = courseHeight - (wallToRamp / 2);
 
-  inState = false;
-}
+//   float x = average_distance();
 
-void base_search(){ // flip
+//   if(x < expectedX){
+//     motor_stop();
+//     return;
+//   }
 
-  move_backward(10);
-
-  while(average_distance() > (courseHeight -  (wallToRamp / 2))){
-  }
-
-  motor_stop();
-
-  float expectedX = courseHeight - (wallToRamp / 2);
-
-  float x = average_distance();
-
-  if(x < expectedX){
-    motor_stop();
-    return;
-  }
-
-  reset_imu();
+//   reset_imu();
   
-  rotate_clockwise();
-  while(mpu.getAngleZ() < 90){ 
-    mpu.update();
-  }
+//   rotate_clockwise();
+//   while(mpu.getAngleZ() < 90){ 
+//     mpu.update();
+//   }
 
-  motor_stop();
+//   motor_stop();
 
   
-  float yRight = average_distance();
-  float yLeft = courseWidth - average_distance() - (2 * offset);
-  float maxAngleLeft = atan(x/yLeft);
-  float maxAngleRight = atan(x/yRight);
+//   float yRight = average_distance();
+//   float yLeft = courseWidth - average_distance() - (2 * offset);
+//   float maxAngleLeft = atan(x/yLeft);
+//   float maxAngleRight = atan(x/yRight);
 
-  reset_imu();
+//   reset_imu();
 
-  rotate_counterclockwise();
+//   rotate_counterclockwise();
 
-  //REGION 1
+//   //REGION 1
 
-  while(mpu.getAngleZ() < maxAngleRight){ 
-    if(average_distance() < yRight ){
-      motor_stop();
-      break;
-    }
-  }
+//   while(mpu.getAngleZ() < maxAngleRight){ 
+//     if(average_distance() < yRight ){
+//       motor_stop();
+//       break;
+//     }
+//   }
 
-  //REGION 2
+//   //REGION 2
 
-  while( mpu.getAngleZ() < (180 - maxAngleLeft) ){
-    if(average_distance()  < x ){
-      motor_stop();
-      break;
-    }
-  }
+//   while( mpu.getAngleZ() < (180 - maxAngleLeft) ){
+//     if(average_distance()  < x ){
+//       motor_stop();
+//       break;
+//     }
+//   }
 
-  //REGION 3
+//   //REGION 3
 
-  while( mpu.getAngleZ() < 180 ){
-    if(average_distance() < yLeft){
-      motor_stop();
-      break;
-    }
-  }
+//   while( mpu.getAngleZ() < 180 ){
+//     if(average_distance() < yLeft){
+//       motor_stop();
+//       break;
+//     }
+//   }
 
-  motor_stop();
+//   motor_stop();
 
-  //FACE FORWARD
+//   //FACE FORWARD
 
-  reset_imu();
+//   reset_imu();
 
-  rotate_clockwise();
+//   rotate_clockwise();
 
-  while( mpu.getAngleZ() != 90 ){
-  }
+//   while( mpu.getAngleZ() != 90 ){
+//   }
 
-  motor_stop();
+//   motor_stop();
 
-  move_backward(50); 
-  while(average_distance() != (courseHeight - wallToRamp)){ 
-  }
+//   move_backward(50); 
+//   while(average_distance() != (courseHeight - wallToRamp)){ 
+//   }
 
-  motor_stop();
+//   motor_stop();
 
-  x -= (wallToRamp / 2); // or x = /* HEIGHT OF COURSE */ - average_distance() - /*  OFFSET */
+//   x -= (wallToRamp / 2); // or x = /* HEIGHT OF COURSE */ - average_distance() - /*  OFFSET */
 
-  maxAngleLeft = atan(x/yLeft);
-  maxAngleRight = atan(x/yRight);
+//   maxAngleLeft = atan(x/yLeft);
+//   maxAngleRight = atan(x/yRight);
 
-  rotate_counterclockwise();
-  while(mpu.getAngleZ() != 0 ){
-  }
+//   rotate_counterclockwise();
+//   while(mpu.getAngleZ() != 0 ){
+//   }
 
-  motor_stop();
+//   motor_stop();
 
-  rotate_clockwise();
+//   rotate_clockwise();
 
-  //REGION 3
+//   //REGION 3
 
-  while( mpu.getAngleZ() < maxAngleLeft ){
-    if(average_distance() < yLeft ){
-      motor_stop();
-      break;
-    }
-  }
+//   while( mpu.getAngleZ() < maxAngleLeft ){
+//     if(average_distance() < yLeft ){
+//       motor_stop();
+//       break;
+//     }
+//   }
 
-  //REGION 2
+//   //REGION 2
 
-  while( mpu.getAngleZ() < (180-maxAngleRight) ){
-    if(average_distance() < x ){
-      motor_stop();
-      break;
-    }
-  }
+//   while( mpu.getAngleZ() < (180-maxAngleRight) ){
+//     if(average_distance() < x ){
+//       motor_stop();
+//       break;
+//     }
+//   }
 
-  //REGION 1
+//   //REGION 1
 
-  while( mpu.getAngleZ() < 180  ){
-    if(average_distance() < yRight ){
-      motor_stop();
-      break;
-    }
-  }
+//   while( mpu.getAngleZ() < 180  ){
+//     if(average_distance() < yRight ){
+//       motor_stop();
+//       break;
+//     }
+//   }
 
-  inState = false;
+//   currentState = "B"
 
-}
+// }
 
 
 // void base_search(){ //no flip
@@ -386,57 +422,57 @@ void base_search(){ // flip
 
 // }
 
-void base_approach(){
-  Serial.println("1....2..");
-  delay(3000);
-  Serial.println("3!");
+// void base_approach(){
+//   Serial.println("1....2..");
+//   delay(3000);
+//   Serial.println("3!");
 
-  Serial.println("RAMP UP START");
-  // rampUp(80, 2);
-  rampUp(80, forward, 1000, 0); //new 
+//   Serial.println("RAMP UP START");
+//   // rampUp(80, 2);
+//   rampUp(80, forward, 1000, 0); //new 
  
-  bool postFound = false;
-  int numMeasurements = 0;
+//   bool postFound = false;
+//   int numMeasurements = 0;
 
-  while(!postFound){
+//   while(!postFound){
     
-      Serial.println("POST NOT FOUND");
-      float leftSensor = read_distance(trigPinLeft, echoPinLeft);
-      float rightSensor = read_distance(trigPinRight, echoPinRight);
-      Serial.println(leftSensor);
-      Serial.println(rightSensor);
-      if(abs(leftSensor - rightSensor) < 10){
-        numMeasurements++;
-      }
+//       Serial.println("POST NOT FOUND");
+//       float leftSensor = read_distance(trigPinLeft, echoPinLeft);
+//       float rightSensor = read_distance(trigPinRight, echoPinRight);
+//       Serial.println(leftSensor);
+//       Serial.println(rightSensor);
+//       if(abs(leftSensor - rightSensor) < 10){
+//         numMeasurements++;
+//       }
 
-      if(numMeasurements == 10){
-        postFound = true;
-      }
+//       if(numMeasurements == 10){
+//         postFound = true;
+//       }
 
-      delay(50);
+//       delay(50);
 
-  }
+//   }
 
-  Serial.println("POST FOUND");
+//   Serial.println("POST FOUND");
 
-  // stop();
-  stop(forward); //new
+//   // stop();
+//   stop(forward); //new
 
-  delay(5000);
+//   delay(5000);
 
-  // rampUp(80, 2);
-  rampUp(80, forward, 1000, 0); //new 
+//   // rampUp(80, 2);
+//   rampUp(80, forward, 1000, 0); //new 
 
-  Serial.println("STARTING APPROACH");
+//   Serial.println("STARTING APPROACH");
 
-  while(read_distance(trigPinLeft, echoPinLeft) > 15 || read_distance(trigPinRight, echoPinRight) > 15){
-      approach(80);
-  }
+//   while(read_distance(trigPinLeft, echoPinLeft) > 15 || read_distance(trigPinRight, echoPinRight) > 15){
+//       approach(80);
+//   }
   
-  // stop();
-  stop(forward); //new
-  Serial.println("Stopped");
-}
+//   // stop();
+//   stop(forward); //new
+//   Serial.println("Stopped");
+// }
 
 
 
