@@ -25,9 +25,6 @@
 // const int inBRight = 12;
 // const int pwmRight = 11;
 
-const float currentPowerLeft;
-const float currentPowerRight;
-
 void setup() {
 
   Serial.begin(9600);
@@ -60,6 +57,7 @@ void setup() {
 
 void loop() {
   base_approach();
+  // move(255, forward, 1000, -1, 10000);
 }
 
 // void rampUp(float power, int direction) {
